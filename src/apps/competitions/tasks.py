@@ -87,6 +87,9 @@ PHASE_FIELDS = [
     "hide_output",
     "hide_prediction_output",
     "hide_score_output",
+    "normalize_leaderboard",
+    "show_raw_scores",
+    "task_min_scores",
 ]
 PHASE_FILES = [
     "input_data",

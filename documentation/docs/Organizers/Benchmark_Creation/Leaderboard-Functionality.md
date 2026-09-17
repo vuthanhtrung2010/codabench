@@ -89,3 +89,48 @@ If a leaderboard is marked as hidden, it will not be visible to participants in 
 ## Downloading Leaderboard Data
 If an administrator, competition administrator, and competition collaborator would like to download the current leaderboard data, they will have access to a button labeled "CSV" on the leaderboard page. This creates a downloadable ZIP file. Each CSV file inside will be titled with the name of the leaderboard. The first row of the CSV is the title for each column, followed by all the submissions on the leaderboard.
 This can be access directly through the API by sending a GET request to `[HOSTNAME]/api/competitions/'ID'/get_csv` where 'ID' is the competition ID.
+
+## Dynamic Leaderboard Normalization & Raw Scores
+
+In competitions where raw metric values vary in scale or where the top participant's score defines the 100% benchmark, Codabench supports **Dynamic Leaderboard Normalization**.
+
+### Grader / Scoring Program Contract
+The scoring program (grader) remains completely independent and stateless:
+- The scoring program **only computes and outputs the raw score** (e.g. accuracy, F1-score, BLEU) in `scores.json`:
+  ```json
+  {"accuracy": 91.57}
+  ```
+- The grader does **not** perform score normalization or keep track of the maximum score across other participants. The Codabench web backend handles normalization dynamically.
+
+### Dynamic Normalization Mechanism
+When dynamic normalization is enabled for a phase (`normalize_leaderboard: true`):
+1. The backend automatically determines the highest raw score ($\text{max}$) achieved by any submission currently on the leaderboard for each task and column.
+2. The baseline score ($\text{min}$) is configured per task in `task_min_scores`.
+3. The normalized score is dynamically computed using the formula:
+   $$\text{Final Normalized Score} = 100 \times \frac{\text{raw} - \text{min}}{\text{max} - \text{min}} \quad \text{if } \text{raw} > \text{min}, \text{ otherwise } 0$$
+4. The top participant's normalized score is automatically $100.0$.
+5. When multiple tasks exist, computation columns (such as `sum` or `avg` for total scores) are recalculated from the normalized scores, and the leaderboard is sorted dynamically based on the primary column.
+
+### Raw Score Subtitles
+When `show_raw_scores: true`, each leaderboard cell displays:
+- The **normalized final score** prominently as the main score.
+- A small muted footer directly underneath showing the original score: `raw <raw_score>` (e.g., `raw 91.57`).
+
+### Configuration Example in `competition.yaml`
+```yaml
+phases:
+  - index: 0
+    name: Final Phase
+    start: 2026-01-01 00:00:00
+    end: 2026-12-31 23:59:59
+    tasks:
+      - 0
+      - 1
+    normalize_leaderboard: true   # Enables dynamic min-max normalization
+    show_raw_scores: true         # Shows "raw <score>" subtitle under each cell
+    task_min_scores:
+      - task: 0                   # Task order index (or task key/ID)
+        min_score: 56.0           # Baseline raw score (scores <= 56.0 get 0.0)
+      - task: 1
+        min_score: 50.0
+```

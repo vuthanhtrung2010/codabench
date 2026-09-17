@@ -91,6 +91,9 @@ pages:
 - **starting_kit:** path to the starting kit, a folder that participants will be able to download. Put there any useful files to help participants (example submissions, notebooks, documentation).
 - **public_data:** path to public data, that participants will be able to download.
 - **accepts_only_result_submissions**(default=False): When set to True, the phase is expected to accept only result submissions.
+- **normalize_leaderboard**(default=False): True/False. When True, dynamically normalizes raw scores on the leaderboard such that the top submission is 100.0 ($100 \times \frac{\text{raw} - \text{min}}{\text{max} - \text{min}}$).
+- **show_raw_scores**(default=True): True/False. When True, displays a `raw <score>` subtitle below the final score in each leaderboard cell.
+- **task_min_scores**: List of baseline minimum scores per task (e.g. `[{task: 0, min_score: 56.0}]`). Any score $\le \text{min\_score}$ normalizes to 0.0.
 
 ```yaml
 phases:

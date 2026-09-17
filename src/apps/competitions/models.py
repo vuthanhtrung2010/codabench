@@ -311,6 +311,9 @@ class Phase(models.Model):
     hide_output = models.BooleanField(default=False)
     hide_prediction_output = models.BooleanField(default=False)
     hide_score_output = models.BooleanField(default=False)
+    normalize_leaderboard = models.BooleanField(default=False)
+    show_raw_scores = models.BooleanField(default=True)
+    task_min_scores = models.JSONField(default=list, blank=True)
 
     has_max_submissions = models.BooleanField(default=True)
     max_submissions_per_day = models.PositiveIntegerField(default=5, null=True, blank=True)

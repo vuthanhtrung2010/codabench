@@ -82,6 +82,9 @@
                     <span if="{column.title != 'Detailed Results'}"
                         class="{bold_class(column, submission)}">
                         {get_score(column, submission)}
+                        <small class="raw-score" if="{get_raw_score(column, submission) !== ''}">
+                            raw {get_raw_score(column, submission)}
+                        </small>
                     </span>
                 </td>
             </tr>
@@ -226,11 +229,14 @@
         }
 
         self.bold_class = function(column, submission){
-            return_class = ''
-            if(column.task_id != -1){
-                if(submission.scores.length > 1){
+            if (column.is_total === true) {
+                return 'total-score-cell'
+            }
+            let return_class = ''
+            if (column.task_id != -1 && column.task_id !== '__total__') {
+                if (submission.scores.length > 1) {
                     let column_index = _.get(column, 'index')
-                    if(column_index === self.selected_leaderboard.primary_index){
+                    if (column_index === self.selected_leaderboard.primary_index) {
                         return_class = 'text-bold'
                     }
                 }
@@ -238,6 +244,21 @@
             return return_class
         }
         self.get_score = function(column, submission) {
+            if (column.is_total) {
+                let sum = 0
+                let has_score = false
+                for (let lc of (column.last_columns || [])) {
+                    let score = _.get(
+                        _.find(submission.scores, { task_id: lc.task_id, column_key: lc.key }),
+                        'score'
+                    )
+                    if (score !== undefined && score !== null && score !== '') {
+                        sum += parseFloat(score)
+                        has_score = true
+                    }
+                }
+                return has_score ? sum.toFixed(2) : ''
+            }
             if(column.task_id === -1){
                 return _.get(submission, 'fact_sheet_answers[' + column.key + ']', 'n/a')
             } else {
@@ -247,6 +268,38 @@
                 }
             }
             return 'n/a'
+        }
+        self.get_raw_score = function(column, submission) {
+            if (_.get(self.selected_leaderboard, 'show_raw_scores') === false) {
+                return ''
+            }
+            if (column.is_total) {
+                let sum = 0
+                let has_score = false
+                for (let lc of (column.last_columns || [])) {
+                    let raw = _.get(
+                        _.find(submission.scores, { task_id: lc.task_id, column_key: lc.key }),
+                        'raw_score'
+                    )
+                    if (raw !== undefined && raw !== null && raw !== '') {
+                        sum += parseFloat(raw)
+                        has_score = true
+                    }
+                }
+                return has_score ? sum.toFixed(2) : ''
+            }
+            if (column.task_id === -1 || column.task_id === '__total__') {
+                return ''
+            }
+            let score_obj = _.find(submission.scores, {'task_id': column.task_id, 'column_key': column.key})
+            if (!score_obj) {
+                return ''
+            }
+            let raw = _.get(score_obj, 'raw_score')
+            if (raw !== undefined && raw !== null && raw !== '') {
+                return raw
+            }
+            return ''
         }
         self.on("mount", function () {
             this.refs.leaderboardFilter.onkeyup = function (e) {
@@ -335,6 +388,27 @@
                     }
                 }
 
+                let valid_tasks = (self.selected_leaderboard.tasks || []).filter(t => t.id !== -1 && t.id !== '__total__')
+                if (valid_tasks.length > 1 && !_.some(self.columns, c => c.is_total || c.key === '__total__')) {
+                    let last_columns = []
+                    for (let task of valid_tasks) {
+                        if (task.columns && task.columns.length > 0) {
+                            let last_col = task.columns[task.columns.length - 1]
+                            last_columns.push({ task_id: task.id, key: last_col.key })
+                        }
+                    }
+                    if (last_columns.length > 1) {
+                        let total_task = {
+                            id: '__total__',
+                            name: 'SUMMARY',
+                            colWidth: 1,
+                            columns: [{ key: '__total__', title: 'FINAL SCORE', task_id: '__total__', is_total: true, last_columns: last_columns }]
+                        }
+                        self.selected_leaderboard.tasks.push(total_task)
+                        self.columns.push(total_task.columns[0])
+                    }
+                }
+
                 self.filter_columns()
                 self.update_pagination()
                 $('#leaderboardTable').tablesort()
@@ -390,5 +464,19 @@
             transform: translate(-50%, -50%)
         .text-bold
             font-weight: bold
+        .raw-score
+            display block
+            font-weight normal
+            font-size 0.8em
+            line-height 1.3
+            color rgba(0, 0, 0, 0.45)
+            font-variant-numeric tabular-nums
+            font-feature-settings 'tnum'
+        .total-score-cell
+            font-weight bold
+            font-size 1.1em
+            color #2185d0 !important
+            font-variant-numeric tabular-nums
+            font-feature-settings 'tnum'
     </style>
 </leaderboards>

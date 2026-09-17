@@ -851,6 +851,9 @@ class PhaseViewSet(ModelViewSet):
             'fact_sheet_keys': fact_sheet_keys or None,
             'primary_index': query['leaderboard']['primary_index'],
             'has_group_queues': False,
+            'normalize_leaderboard': phase.normalize_leaderboard,
+            'show_raw_scores': phase.show_raw_scores,
+            'normalized': phase.normalize_leaderboard,
         }
 
         columns = list(query['columns'])
@@ -949,9 +952,12 @@ class PhaseViewSet(ModelViewSet):
                         column_found = True
                         break
 
-                tempScore = score
+                tempScore = dict(score)
                 tempScore['task_id'] = submission['task']
-                tempScore['score'] = str(round(float(tempScore["score"]), precision))
+                raw_score_str = str(round(float(tempScore["score"]), precision))
+                tempScore['score'] = raw_score_str
+                tempScore['raw_score'] = raw_score_str
+                tempScore['precision'] = precision
 
                 if column_found and not hidden:
                     response['submissions'][submissions_keys[submission_key]]['scores'].append(tempScore)
@@ -960,8 +966,148 @@ class PhaseViewSet(ModelViewSet):
         for k, v in submissions_keys.items():
             response['submissions'][v]['detailed_results'] = submission_detailed_results[k]
 
-        # Compute average rank for any AVERAGE_RANK columns and inject into response.
         col_by_index = {col['index']: col for col in columns}
+
+        # Dynamic leaderboard normalization
+        if phase.normalize_leaderboard:
+            order_min_map = {}
+            key_min_map = {}
+            id_min_map = {}
+            if phase.task_min_scores:
+                items = phase.task_min_scores if isinstance(phase.task_min_scores, list) else [
+                    {'task': k, 'min_score': v} for k, v in phase.task_min_scores.items()
+                ]
+                for item in items:
+                    if isinstance(item, dict):
+                        t_ref = str(item.get('task'))
+                        try:
+                            m_val = float(item.get('min_score', 0.0))
+                        except (ValueError, TypeError):
+                            m_val = 0.0
+                        if t_ref.isdigit():
+                            order_min_map[int(t_ref)] = m_val
+                        key_min_map[t_ref] = m_val
+                        id_min_map[t_ref] = m_val
+
+            task_min_map = {}
+            for task_instance in phase.task_instances.select_related('task'):
+                t_id = str(task_instance.task.id)
+                t_key = str(task_instance.task.key)
+                t_order = task_instance.order_index
+                val = order_min_map.get(t_order, key_min_map.get(t_key, id_min_map.get(t_id, 0.0)))
+                task_min_map[t_id] = float(val)
+
+            # Find max raw score per (task_id, column_index) across all submissions on the leaderboard
+            task_col_max = {}
+            for sub in response['submissions']:
+                for s in sub['scores']:
+                    t_id = s.get('task_id')
+                    c_idx = s.get('index')
+                    col_obj = col_by_index.get(c_idx)
+                    if col_obj and col_obj.get('computation'):
+                        continue
+                    try:
+                        val = float(s.get('raw_score', s['score']))
+                        key = (t_id, c_idx)
+                        if key not in task_col_max or val > task_col_max[key]:
+                            task_col_max[key] = val
+                    except (ValueError, TypeError):
+                        pass
+
+            # Normalize base scores
+            for sub in response['submissions']:
+                for s in sub['scores']:
+                    t_id = s.get('task_id')
+                    c_idx = s.get('index')
+                    col_obj = col_by_index.get(c_idx)
+                    if col_obj and col_obj.get('computation'):
+                        continue
+                    precision = s.get('precision', 2)
+                    try:
+                        raw_val = float(s.get('raw_score', s['score']))
+                    except (ValueError, TypeError):
+                        continue
+
+                    s['raw_score'] = str(round(raw_val, precision))
+                    max_val = task_col_max.get((t_id, c_idx))
+                    min_val = task_min_map.get(str(t_id), 0.0)
+
+                    if max_val is not None and max_val > min_val:
+                        if raw_val > min_val:
+                            norm_val = 100.0 * (raw_val - min_val) / (max_val - min_val)
+                        else:
+                            norm_val = 0.0
+                    else:
+                        norm_val = 100.0 if raw_val >= min_val else 0.0
+
+                    norm_score_str = str(round(norm_val, precision))
+                    s['normalized_score'] = norm_score_str
+                    s['score'] = norm_score_str
+
+            # Recompute any computation columns from normalized scores
+            comp_cols = [c for c in columns if c.get('computation') and c.get('computation') != Column.AVERAGE_RANK]
+            for col in comp_cols:
+                comp_type = col.get('computation')
+                raw_comp = col.get('computation_indexes')
+                if isinstance(raw_comp, list):
+                    comp_indexes = [int(x) for x in raw_comp if str(x).strip().isdigit()]
+                elif isinstance(raw_comp, str):
+                    comp_indexes = [int(x.strip()) for x in raw_comp.split(',') if x.strip().isdigit()]
+                else:
+                    comp_indexes = []
+                comp_func = Column.COMPUTATION_FUNCTIONS.get(comp_type)
+                precision = col.get('precision', 2)
+                if not comp_func or not comp_indexes:
+                    continue
+
+                for sub in response['submissions']:
+                    norm_vals = []
+                    raw_vals = []
+                    for idx in comp_indexes:
+                        score_obj = next((s for s in sub['scores'] if s.get('index') == idx), None)
+                        if score_obj:
+                            try:
+                                norm_vals.append(float(score_obj['score']))
+                                raw_vals.append(float(score_obj.get('raw_score', score_obj['score'])))
+                            except (ValueError, TypeError):
+                                pass
+
+                    if norm_vals:
+                        computed_norm = comp_func(norm_vals)
+                        computed_raw = comp_func(raw_vals) if raw_vals else computed_norm
+                        existing_comp = next((s for s in sub['scores'] if s.get('index') == col['index']), None)
+                        if existing_comp:
+                            existing_comp['score'] = str(round(float(computed_norm), precision))
+                            existing_comp['normalized_score'] = existing_comp['score']
+                            existing_comp['raw_score'] = str(round(float(computed_raw), precision))
+                        else:
+                            sub['scores'].append({
+                                'index': col['index'],
+                                'column_key': col['key'],
+                                'score': str(round(float(computed_norm), precision)),
+                                'normalized_score': str(round(float(computed_norm), precision)),
+                                'raw_score': str(round(float(computed_raw), precision)),
+                                'is_primary': col['index'] == response['primary_index'],
+                                'precision': precision,
+                            })
+
+            # Re-sort submissions by primary column when normalized
+            primary_col = col_by_index.get(response['primary_index'])
+            if primary_col and primary_col.get('computation') != Column.AVERAGE_RANK:
+                reverse = primary_col.get('sorting', 'desc') == 'desc'
+
+                def _primary_sort_key(sub):
+                    for s in sub['scores']:
+                        if s.get('index') == primary_col['index']:
+                            try:
+                                return float(s['score'])
+                            except (ValueError, TypeError):
+                                return -float('inf') if reverse else float('inf')
+                    return -float('inf') if reverse else float('inf')
+
+                response['submissions'].sort(key=_primary_sort_key, reverse=reverse)
+
+        # Compute average rank for any AVERAGE_RANK columns and inject into response.
         avg_rank_cols = [col for col in columns if col.get('computation') == Column.AVERAGE_RANK]
         if avg_rank_cols:
             inject_average_ranks(response['submissions'], avg_rank_cols, col_by_index, response['primary_index'])

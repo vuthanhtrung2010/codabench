@@ -91,6 +91,9 @@ class V15Unpacker(BaseUnpacker):
                 'hide_output': phase.get('hide_output', False),
                 'hide_prediction_output': phase.get('hide_prediction_output', False),
                 'hide_score_output': phase.get('hide_score_output', False),
+                'normalize_leaderboard': phase.get('normalize_leaderboard', False),
+                'show_raw_scores': phase.get('show_raw_scores', True),
+                'task_min_scores': phase.get('task_min_scores', []),
             }
             execution_time_limit = phase.get('execution_time_limit')
             if execution_time_limit:

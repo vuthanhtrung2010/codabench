@@ -13,6 +13,19 @@ MIDDLEWARE = ('debug_toolbar.middleware.DebugToolbarMiddleware',
 STORAGES["staticfiles"] = {
     "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
 }
+STORAGES["default"] = {
+    "BACKEND": "django.core.files.storage.InMemoryStorage",
+}
+STORAGES["bundle"] = {
+    "BACKEND": "django.core.files.storage.InMemoryStorage",
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 # NOTE! We cannot use in memory databases at the moment with Channels. If we remove channels,
 # we can turn this back on:
 #     # Use in memory database
