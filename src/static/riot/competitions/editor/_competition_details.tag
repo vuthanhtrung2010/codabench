@@ -465,9 +465,17 @@
             self.refs.title.value = competition.title
             self.markdown_editor.value(competition.description || '')
 
-            // Value comes like c:/fakepath/file_name.txt -- cut out everything but file_name.txt
-            self.uploaded_logo_name = competition.logo.replace(/\\/g, '/').replace(/.*\//, '')
-            self.uploaded_logo = competition.logo
+            if (competition.logo) {
+                let logo_clean_name = competition.logo.split('?')[0].split('#')[0].replace(/\\/g, '/').replace(/.*\//, '')
+                try {
+                    logo_clean_name = decodeURIComponent(logo_clean_name)
+                } catch (e) {}
+                self.uploaded_logo_name = logo_clean_name
+                self.uploaded_logo = competition.logo
+            } else {
+                self.uploaded_logo_name = ''
+                self.uploaded_logo = null
+            }
             if (competition.queue) {
                 $(self.refs.queue)
                     .dropdown('set text', competition.queue.name)
