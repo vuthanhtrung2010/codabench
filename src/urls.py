@@ -33,12 +33,12 @@ urlpatterns = [
 
 ]
 
-if settings.DEBUG:
-    # Static files for local dev, so we don't have to collectstatic and such
-    urlpatterns += staticfiles_urlpatterns()
-
-    # Django debug toolbar
-    import debug_toolbar
-    urlpatterns += [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ]
+#if settings.DEBUG:
+#    # Static files for local dev, so we don't have to collectstatic and such
+#    urlpatterns += staticfiles_urlpatterns()
+#
+#    # Django debug toolbar
+#    import debug_toolbar
+#    urlpatterns += [
+#        path('__debug__/', include(debug_toolbar.urls)),
+#    ]

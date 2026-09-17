@@ -189,7 +189,7 @@ SOCIAL_AUTH_USER_MODEL = 'profiles.User'
 # =============================================================================
 # Debugging
 # =============================================================================
-DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
 # =============================================================================
 # Database
@@ -411,6 +411,7 @@ STORAGE_IS_GCS = STORAGE_TYPE == 'gcs'
 STORAGE_IS_AZURE = STORAGE_TYPE == 'azure'
 
 # Django 4.x STORAGES configuration
+# Django 4.x STORAGES configuration
 if STORAGE_IS_S3:
     STORAGES = {
         "default": {
@@ -420,9 +421,11 @@ if STORAGE_IS_S3:
                 "access_key": os.environ.get('AWS_ACCESS_KEY_ID'),
                 "secret_key": os.environ.get('AWS_SECRET_ACCESS_KEY'),
                 "endpoint_url": os.environ.get('AWS_S3_ENDPOINT_URL'),
-                "use_ssl": os.environ.get('S3_USE_SIGV4', 'true').lower() == 'true',
-                "querystring_auth": os.environ.get('AWS_QUERYSTRING_AUTH'),
-                "default_acl": os.environ.get('AWS_DEFAULT_ACL'),
+                "use_ssl": True,
+                "signature_version": "s3v4",
+                "region_name": "auto",
+                "querystring_auth": os.environ.get('AWS_QUERYSTRING_AUTH', "true").lower() == "true",
+                "default_acl": None,
             },
         },
         "bundle": {
@@ -432,9 +435,11 @@ if STORAGE_IS_S3:
                 "access_key": os.environ.get("AWS_ACCESS_KEY_ID"),
                 "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
                 "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL"),
-                "use_ssl": os.environ.get("S3_USE_SIGV4", "true").lower() == "true",
+                "use_ssl": True,
+                "signature_version": "s3v4",
+                "region_name": "auto",
                 "querystring_auth": os.environ.get("AWS_QUERYSTRING_AUTH", "true").lower() == "true",
-                "default_acl": os.environ.get("AWS_DEFAULT_ACL", "private"),
+                "default_acl": None,
             },
         },
         "staticfiles": {
@@ -539,32 +544,32 @@ DEFAULT_USER_QUOTA = 15  # 15GB
 # =============================================================================
 # Debug
 # =============================================================================
-if DEBUG:
-    INSTALLED_APPS += ('debug_toolbar',)
-    MIDDLEWARE = ('debug_toolbar.middleware.DebugToolbarMiddleware',
-                  'querycount.middleware.QueryCountMiddleware',
-                  ) + MIDDLEWARE  # we want Debug Middleware at the top
-    # tricks to have debug toolbar when developing with docker
-
-    INTERNAL_IPS = ['127.0.0.1']
-
-    import socket
-
-    try:
-        INTERNAL_IPS.append(socket.gethostbyname(socket.gethostname())[:-1])
-    except socket.gaierror:
-        pass
-
-    QUERYCOUNT = {
-        'IGNORE_REQUEST_PATTERNS': [
-            r'^/admin/',
-            r'^/static/',
-        ]
-    }
-
-    DEBUG_TOOLBAR_CONFIG = {
-        "SHOW_TOOLBAR_CALLBACK": lambda request: True
-    }
+#if DEBUG:
+#    INSTALLED_APPS += ('debug_toolbar',)
+#    MIDDLEWARE = ('debug_toolbar.middleware.DebugToolbarMiddleware',
+#                  'querycount.middleware.QueryCountMiddleware',
+#                  ) + MIDDLEWARE  # we want Debug Middleware at the top
+#    # tricks to have debug toolbar when developing with docker
+#
+#    INTERNAL_IPS = ['127.0.0.1']
+#
+#    import socket
+#
+#    try:
+#        INTERNAL_IPS.append(socket.gethostbyname(socket.gethostname())[:-1])
+#    except socket.gaierror:
+#        pass
+#
+#    QUERYCOUNT = {
+#        'IGNORE_REQUEST_PATTERNS': [
+#            r'^/admin/',
+#            r'^/static/',
+#        ]
+#    }
+#
+#    DEBUG_TOOLBAR_CONFIG = {
+#        "SHOW_TOOLBAR_CALLBACK": lambda request: True
+#    }
 
 # =========================================================================
 # Email
