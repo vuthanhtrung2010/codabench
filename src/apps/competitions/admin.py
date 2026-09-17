@@ -182,10 +182,25 @@ class QueueFilter(InputFilter):
                 return queryset.filter(queue__name=value)
 
 
+class PhaseInline(admin.TabularInline):
+    model = models.Phase
+    extra = 0
+    fields = [
+        "name",
+        "index",
+        "start",
+        "end",
+        "normalize_leaderboard",
+        "show_raw_scores",
+    ]
+    show_change_link = True
+
+
 class CompetitionExpansion(admin.ModelAdmin):
     search_fields = ["id", "title", "docker_image", "created_by__username"]
     list_display = ["id", "title", "created_by", "published", "is_featured"]
     list_display_links = ["id", "title"]
+    inlines = [PhaseInline]
     actions = [CompetitionExport_as_json, CompetitionExport_as_csv]
     raw_id_fields = ["created_by", "collaborators", "queue"]
     ordering = ('-id',)
@@ -373,8 +388,9 @@ class PageExpansion(admin.ModelAdmin):
 
 class PhaseExpansion(admin.ModelAdmin):
     raw_id_fields = ["competition", "leaderboard", "public_data", "starting_kit"]
-    list_display = ["id", "competition", "name"]
-    search_fields = ["id", "competition", "name"]
+    list_display = ["id", "competition", "name", "normalize_leaderboard", "show_raw_scores"]
+    list_filter = ["normalize_leaderboard", "show_raw_scores", "status"]
+    search_fields = ["id", "competition__title", "name"]
     ordering = ('-id',)
     fieldsets = [
         (
@@ -387,6 +403,15 @@ class PhaseExpansion(admin.ModelAdmin):
                     "description",
                     "start",
                     "end",
+                ]
+            },
+        ),
+        (
+            "Leaderboard Normalization",
+            {
+                "fields": [
+                    ("normalize_leaderboard", "show_raw_scores"),
+                    "task_min_scores",
                 ]
             },
         ),

@@ -19,7 +19,10 @@
                     </thead>
                     <tbody>
                     <tr each="{phase, index in phases}">
-                        <td>{ phase.name }</td>
+                        <td>
+                            { phase.name }
+                            <span class="ui mini teal label" if="{ phase.normalize_leaderboard }">Normalized</span>
+                        </td>
                         <td class="right aligned">
                             <a class="chevron">
                                 <sorting-chevrons data="{ phases }"
@@ -216,6 +219,52 @@
                             </div>
                         </div>
 
+                        <div class="ui divider"></div>
+                        <h4 class="ui dividing header">Leaderboard Normalization</h4>
+
+                        <div class="two fields">
+                            <div class="field">
+                                <div class="ui checkbox" ref="normalize_leaderboard_checkbox">
+                                    <input type="checkbox" ref="normalize_leaderboard" onchange="{ on_toggle_normalize }">
+                                    <label>Normalize Leaderboard
+                                        <span data-tooltip="Normalize raw scores to 0-100 scale: 100 * (score - min) / (max - min)" data-inverted=""
+                                              data-position="bottom center"><i class="help icon circle"></i></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="ui checkbox" ref="show_raw_scores_checkbox">
+                                    <input type="checkbox" ref="show_raw_scores">
+                                    <label>Show Raw Scores
+                                        <span data-tooltip="Display raw scores in small text below normalized score on the leaderboard" data-inverted=""
+                                              data-position="bottom center"><i class="help icon circle"></i></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field" show="{ is_normalize_leaderboard }">
+                            <label>Per-Task Baseline Minimum Scores (min)
+                                <span data-tooltip="Set baseline minimum score for each task (used for normalization). Default is 0.0" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                            </label>
+                            <div class="ui segment" if="{ phase_tasks && phase_tasks.length > 0 }">
+                                <div class="two fields" each="{ task, idx in phase_tasks }">
+                                    <div class="field">
+                                        <label><i class="tasks icon"></i> { task.name || task.text || ('Task ' + (idx + 1)) }</label>
+                                    </div>
+                                    <div class="field">
+                                        <div class="ui labeled input">
+                                            <div class="ui label">Min Score</div>
+                                            <input type="number" step="any" placeholder="0.0" value="{ get_task_min_score(idx, task) }" oninput="{ set_task_min_score }">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ui message info" if="{ !phase_tasks || phase_tasks.length === 0 }">
+                                Please select tasks above to configure their baseline minimum scores.
+                            </div>
+                        </div>
+
                         <div class="inline field" if="{phases.length > 0 && ![null, undefined, 0].includes(selected_phase_index)}">
                             <div class="ui checkbox">
                                 <input type="checkbox" name="auto_migrate_to_this_phase" ref="auto_migrate">
@@ -254,9 +303,18 @@
         self.phase_starting_kit = []
         self.selected_phase_index = undefined
         self.warnings = []
+        self.is_normalize_leaderboard = false
+        self.current_task_min_scores_map = {}
 
         self.one("mount", function () {
             $('.ui.checkbox', self.root).checkbox()
+            $(self.refs.normalize_leaderboard_checkbox).checkbox({
+                onChange: function () {
+                    self.is_normalize_leaderboard = self.refs.normalize_leaderboard.checked
+                    self.update()
+                }
+            })
+            $(self.refs.show_raw_scores_checkbox).checkbox()
 
             // awesome markdown editor
             self.simple_markdown_editor = create_easyMDE(self.refs.description)
@@ -342,6 +400,38 @@
         /*---------------------------------------------------------------------
          Methods
         ---------------------------------------------------------------------*/
+        // Leaderboard Normalization
+        self.on_toggle_normalize = function (e) {
+            self.is_normalize_leaderboard = self.refs.normalize_leaderboard.checked
+            self.update()
+        }
+
+        self.get_task_min_score = function (idx, task) {
+            if (!self.current_task_min_scores_map) {
+                return ''
+            }
+            if (task && task.value !== undefined && self.current_task_min_scores_map[task.value] !== undefined) {
+                return self.current_task_min_scores_map[task.value]
+            }
+            if (self.current_task_min_scores_map[idx] !== undefined) {
+                return self.current_task_min_scores_map[idx]
+            }
+            return ''
+        }
+
+        self.set_task_min_score = function (e) {
+            let task = e.item.task
+            let idx = e.item.idx
+            let val = e.target.value
+            if (!self.current_task_min_scores_map) {
+                self.current_task_min_scores_map = {}
+            }
+            if (task && task.value !== undefined) {
+                self.current_task_min_scores_map[task.value] = val
+            }
+            self.current_task_min_scores_map[idx] = val
+        }
+
         // Tasks
         self.task_added = (key, text, item) => {
             let index = _.findIndex(self.phase_tasks, (task) => {
@@ -639,6 +729,15 @@
                 $(field).val('')
             })
             $(self.refs.auto_migrate).prop('checked', false)
+            self.refs.hide_output.checked = false
+            self.refs.hide_prediction_output.checked = false
+            self.refs.hide_score_output.checked = false
+            $(self.refs.normalize_leaderboard_checkbox).checkbox('set unchecked')
+            $(self.refs.show_raw_scores_checkbox).checkbox('set unchecked')
+            self.refs.normalize_leaderboard.checked = false
+            self.refs.show_raw_scores.checked = false
+            self.is_normalize_leaderboard = false
+            self.current_task_min_scores_map = {}
 
             // Clear date and time fields values
             $(self.refs.calendar_start_date).find('input[name="start_date"]').val('')
@@ -684,6 +783,40 @@
             self.refs.hide_output.checked = phase.hide_output
             self.refs.hide_prediction_output.checked = phase.hide_prediction_output
             self.refs.hide_score_output.checked = phase.hide_score_output
+
+            let norm = !!_.get(phase, 'normalize_leaderboard', false)
+            let show_raw = !!_.get(phase, 'show_raw_scores', false)
+            self.is_normalize_leaderboard = norm
+            self.refs.normalize_leaderboard.checked = norm
+            self.refs.show_raw_scores.checked = show_raw
+            if (norm) {
+                $(self.refs.normalize_leaderboard_checkbox).checkbox('set checked')
+            } else {
+                $(self.refs.normalize_leaderboard_checkbox).checkbox('set unchecked')
+            }
+            if (show_raw) {
+                $(self.refs.show_raw_scores_checkbox).checkbox('set checked')
+            } else {
+                $(self.refs.show_raw_scores_checkbox).checkbox('set unchecked')
+            }
+
+            self.current_task_min_scores_map = {}
+            let raw_min_scores = _.get(phase, 'task_min_scores', [])
+            if (Array.isArray(raw_min_scores)) {
+                raw_min_scores.forEach(item => {
+                    if (item && item.task !== undefined) {
+                        let score = item.min_score !== undefined ? item.min_score : 0
+                        self.current_task_min_scores_map[item.task] = score
+                        if (self.phase_tasks && self.phase_tasks[item.task]) {
+                            self.current_task_min_scores_map[self.phase_tasks[item.task].value] = score
+                        }
+                    }
+                })
+            } else if (typeof raw_min_scores === 'object' && raw_min_scores !== null) {
+                Object.keys(raw_min_scores).forEach(k => {
+                    self.current_task_min_scores_map[k] = raw_min_scores[k]
+                })
+            }
 
             // Setting description in markdown editor
             self.simple_markdown_editor.value(self.phases[index].description || '')
@@ -850,6 +983,20 @@
             data.hide_output = self.refs.hide_output.checked
             data.hide_prediction_output = self.refs.hide_prediction_output.checked
             data.hide_score_output = self.refs.hide_score_output.checked
+            data.normalize_leaderboard = $(self.refs.normalize_leaderboard).prop('checked') || self.refs.normalize_leaderboard.checked
+            data.show_raw_scores = $(self.refs.show_raw_scores).prop('checked') || self.refs.show_raw_scores.checked
+            data.task_min_scores = []
+            if (data.normalize_leaderboard) {
+                _.forEach(self.phase_tasks, (task, idx) => {
+                    let val = self.get_task_min_score(idx, task)
+                    if (val !== '' && val !== null && val !== undefined && !isNaN(parseFloat(val))) {
+                        data.task_min_scores.push({
+                            task: idx,
+                            min_score: parseFloat(val)
+                        })
+                    }
+                })
+            }
             _.forEach(number_fields, field => {
                 let str = _.get(data, field)
                 if (str) {

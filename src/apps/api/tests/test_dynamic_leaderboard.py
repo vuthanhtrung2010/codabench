@@ -1,7 +1,8 @@
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from competitions.models import PhaseTaskInstance, CompetitionParticipant
+from django.contrib import admin
+from competitions.models import PhaseTaskInstance, CompetitionParticipant, Competition, Phase
 from leaderboards.models import Leaderboard, Column, SubmissionScore
 import factories
 
@@ -237,3 +238,52 @@ class DynamicLeaderboardTests(APITestCase):
         # Primary sort is on col 0 (Accuracy, desc): user1 (100.0) is first, user2 (0.0) is second
         assert subs[0]['owner'] == 'user1'
         assert subs[1]['owner'] == 'user2'
+
+    def test_phase_api_update_normalization_settings(self):
+        self.client.force_authenticate(user=self.creator)
+        url = reverse('phases-detail', kwargs={'pk': self.phase.id})
+
+        # Update normalization settings via PATCH
+        update_data = {
+            'normalize_leaderboard': False,
+            'show_raw_scores': False,
+            'task_min_scores': [
+                {'task': 0, 'min_score': 12.5}
+            ]
+        }
+        resp = self.client.patch(url, update_data, format='json')
+        assert resp.status_code == 200
+        self.phase.refresh_from_db()
+        assert self.phase.normalize_leaderboard is False
+        assert self.phase.show_raw_scores is False
+        assert self.phase.task_min_scores == [{'task': 0, 'min_score': 12.5}]
+
+        # Turn normalization back on
+        update_data_on = {
+            'normalize_leaderboard': True,
+            'show_raw_scores': True,
+            'task_min_scores': [
+                {'task': 0, 'min_score': 55.0}
+            ]
+        }
+        resp = self.client.patch(url, update_data_on, format='json')
+        assert resp.status_code == 200
+        self.phase.refresh_from_db()
+        assert self.phase.normalize_leaderboard is True
+        assert self.phase.show_raw_scores is True
+        assert self.phase.task_min_scores == [{'task': 0, 'min_score': 55.0}]
+
+    def test_admin_phase_and_competition_inlines(self):
+        competition_admin = admin.site._registry[Competition]
+        inline_models = [inline.model for inline in competition_admin.inlines]
+        assert Phase in inline_models
+
+        phase_inline = next(inline for inline in competition_admin.inlines if inline.model == Phase)
+        assert 'normalize_leaderboard' in phase_inline.fields
+        assert 'show_raw_scores' in phase_inline.fields
+
+        phase_admin = admin.site._registry[Phase]
+        assert 'normalize_leaderboard' in phase_admin.list_display
+        assert 'show_raw_scores' in phase_admin.list_display
+        assert 'normalize_leaderboard' in phase_admin.list_filter
+        assert 'show_raw_scores' in phase_admin.list_filter
