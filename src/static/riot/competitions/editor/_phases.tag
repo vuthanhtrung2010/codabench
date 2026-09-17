@@ -14,14 +14,21 @@
                 <table class="ui padded table">
                     <thead>
                     <tr>
-                        <th colspan="2">Phases</th>
+                        <th>Phase Name</th>
+                        <th class="center aligned" style="width: 250px;">Leaderboard Normalization</th>
+                        <th class="right aligned" style="width: 140px;">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr each="{phase, index in phases}">
-                        <td>
-                            { phase.name }
-                            <span class="ui mini teal label" if="{ phase.normalize_leaderboard }">Normalized</span>
+                        <td><strong>{ phase.name }</strong></td>
+                        <td class="center aligned">
+                            <span class="ui teal small label" if="{ phase.normalize_leaderboard }">
+                                <i class="check circle icon"></i> Normalized (0-100)
+                            </span>
+                            <span class="ui basic grey small label" if="{ !phase.normalize_leaderboard }">
+                                <i class="circle outline icon"></i> Raw Scores
+                            </span>
                         </td>
                         <td class="right aligned">
                             <a class="chevron">
@@ -40,14 +47,14 @@
                         </td>
                     </tr>
                     <tr show="{phases.length === 0}">
-                        <td colspan="2" class="center aligned">
+                        <td colspan="3" class="center aligned">
                             <em>No phases added yet, at least 1 is required!</em>
                         </td>
                     </tr>
                     </tbody>
                     <tfoot>
                     <tr>
-                        <th colspan="2" class="right aligned">
+                        <th colspan="3" class="right aligned">
                             <button class="ui tiny inverted green icon button" onclick="{ add }">
                                 <i selenium="add-phase" class="add circle icon"></i> Add phase
                             </button>
@@ -153,6 +160,58 @@
                     <textarea class="markdown-editor" ref="description" name="description"></textarea>
                 </div>
 
+                <div class="ui segment" style="background: #fafafa;">
+                    <h4 class="ui header">
+                        <i class="chart line icon"></i>
+                        <div class="content">
+                            Leaderboard Normalization
+                            <div class="sub header">Normalize raw scores to 0-100 scale: 100 * (score - min) / (max - min)</div>
+                        </div>
+                    </h4>
+                    <div class="two fields">
+                        <div class="field">
+                            <div class="ui checkbox" ref="normalize_leaderboard_checkbox">
+                                <input type="checkbox" ref="normalize_leaderboard" onchange="{ on_toggle_normalize }">
+                                <label>Normalize Leaderboard
+                                    <span data-tooltip="Normalize raw scores to 0-100 scale: 100 * (score - min) / (max - min)" data-inverted=""
+                                          data-position="bottom center"><i class="help icon circle"></i></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <div class="ui checkbox" ref="show_raw_scores_checkbox">
+                                <input type="checkbox" ref="show_raw_scores">
+                                <label>Show Raw Scores
+                                    <span data-tooltip="Display raw scores in small text below normalized score on the leaderboard" data-inverted=""
+                                          data-position="bottom center"><i class="help icon circle"></i></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field" show="{ is_normalize_leaderboard }">
+                        <label>Per-Task Baseline Minimum Scores (min)
+                            <span data-tooltip="Set baseline minimum score for each task (used for normalization). Default is 0.0" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                        </label>
+                        <div class="ui segment" if="{ phase_tasks && phase_tasks.length > 0 }">
+                            <div class="two fields" each="{ task, idx in phase_tasks }">
+                                <div class="field">
+                                    <label><i class="tasks icon"></i> { task.name || task.text || ('Task ' + (idx + 1)) }</label>
+                                </div>
+                                <div class="field">
+                                    <div class="ui labeled input">
+                                        <div class="ui label">Min Score</div>
+                                        <input type="number" step="any" placeholder="0.0" value="{ get_task_min_score(idx, task) }" oninput="{ set_task_min_score }">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ui message info" if="{ !phase_tasks || phase_tasks.length === 0 }">
+                            Please select tasks above to configure their baseline minimum scores.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="ui accordion" ref="advanced_settings">
                     <div class="title">
                         <i class="dropdown icon"></i>
@@ -216,52 +275,6 @@
                               data-position="bottom center"><i class="help icon circle"></i></span>
                                 </label>
                                 <input type="checkbox" ref="hide_score_output">
-                            </div>
-                        </div>
-
-                        <div class="ui divider"></div>
-                        <h4 class="ui dividing header">Leaderboard Normalization</h4>
-
-                        <div class="two fields">
-                            <div class="field">
-                                <div class="ui checkbox" ref="normalize_leaderboard_checkbox">
-                                    <input type="checkbox" ref="normalize_leaderboard" onchange="{ on_toggle_normalize }">
-                                    <label>Normalize Leaderboard
-                                        <span data-tooltip="Normalize raw scores to 0-100 scale: 100 * (score - min) / (max - min)" data-inverted=""
-                                              data-position="bottom center"><i class="help icon circle"></i></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <div class="ui checkbox" ref="show_raw_scores_checkbox">
-                                    <input type="checkbox" ref="show_raw_scores">
-                                    <label>Show Raw Scores
-                                        <span data-tooltip="Display raw scores in small text below normalized score on the leaderboard" data-inverted=""
-                                              data-position="bottom center"><i class="help icon circle"></i></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="field" show="{ is_normalize_leaderboard }">
-                            <label>Per-Task Baseline Minimum Scores (min)
-                                <span data-tooltip="Set baseline minimum score for each task (used for normalization). Default is 0.0" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
-                            </label>
-                            <div class="ui segment" if="{ phase_tasks && phase_tasks.length > 0 }">
-                                <div class="two fields" each="{ task, idx in phase_tasks }">
-                                    <div class="field">
-                                        <label><i class="tasks icon"></i> { task.name || task.text || ('Task ' + (idx + 1)) }</label>
-                                    </div>
-                                    <div class="field">
-                                        <div class="ui labeled input">
-                                            <div class="ui label">Min Score</div>
-                                            <input type="number" step="any" placeholder="0.0" value="{ get_task_min_score(idx, task) }" oninput="{ set_task_min_score }">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ui message info" if="{ !phase_tasks || phase_tasks.length === 0 }">
-                                Please select tasks above to configure their baseline minimum scores.
                             </div>
                         </div>
 

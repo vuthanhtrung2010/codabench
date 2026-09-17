@@ -4,4 +4,4 @@ FROM node:lts-alpine3.23
 VOLUME /app
 WORKDIR /app
 ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["npm install && export PATH=./node_modules/.bin:$PATH && npm-watch"]
+CMD ["npm install && export PATH=./node_modules/.bin:$PATH && npm run build-riot && npm run build-stylus && npm-watch"]

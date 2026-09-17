@@ -361,7 +361,7 @@
     <script src="{% static "js/jquery.form.serializer.js" %}"></script>
     <script src="{% static "js/Chart.bundle.js" %}"></script>
     <script src="{% static "js/reconnecting-websocket.min.js" %}"></script>
-    <script src="{% static "generated/riot.js" %}"></script>
+    <script src="{% static "generated/riot.js" %}?v={% now "U" %}"></script>
     <script src="{% static "js/ours/latex_markdown_html.js" %}"></script>
 
     {% block extra_js %}
