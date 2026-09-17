@@ -496,7 +496,7 @@ def unpack_competition(status_pk):
                         f"Download competition bundle: {competition_dataset.data_file.name}"
                     )
                     competition_bundle_url = make_url_sassy(
-                        competition_dataset.data_file.url
+                        competition_dataset.data_file.name
                     )
                     try:
                         with requests.get(competition_bundle_url, stream=True) as r:

@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import timedelta
+from urllib.parse import unquote, urlparse
 
 import requests
 from azure.storage.blob import BlobSasPermissions
@@ -45,11 +46,38 @@ class PathWrapper(object):
 def make_url_sassy(path, permission='r', duration=60 * 60 * 24 * 5, content_type='application/zip'):
     assert permission in ('r', 'w'), "SASSY urls only support read and write ('r' or 'w' permission)"
 
+    # Extract clean relative key/path even if a FieldFile or full URL is passed
+    if hasattr(path, 'name'):
+        path = path.name
+    path = str(path)
+
+    if '://' in path:
+        path = urlparse(path).path
+    else:
+        if '?' in path:
+            path = path.split('?')[0]
+        if '#' in path:
+            path = path.split('#')[0]
+
+    path = unquote(path)
+
     client_method = None  # defined based on storage backend
 
     if settings.STORAGE_IS_S3:
         # Remove the beginning of the URL (before bucket name) so we just have the path to the file
-        path = path.split(settings.AWS_STORAGE_PRIVATE_BUCKET_NAME)[-1]
+        private_bucket = getattr(settings, 'AWS_STORAGE_PRIVATE_BUCKET_NAME', None)
+        public_bucket = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+        for bucket_name in (private_bucket, public_bucket):
+            if bucket_name:
+                if path.startswith(f"/{bucket_name}/"):
+                    path = path[len(f"/{bucket_name}/"):]
+                    break
+                elif path.startswith(f"{bucket_name}/"):
+                    path = path[len(f"{bucket_name}/"):]
+                    break
+                elif bucket_name in path:
+                    path = path.split(bucket_name)[-1]
+                    break
 
         # remove prepended slash
         if path.startswith('/'):
@@ -78,6 +106,23 @@ def make_url_sassy(path, permission='r', duration=60 * 60 * 24 * 5, content_type
             ExpiresIn=duration,
         )
     elif settings.STORAGE_IS_GCS:
+        private_bucket = getattr(settings, 'GS_PRIVATE_BUCKET_NAME', None)
+        public_bucket = getattr(settings, 'GS_PUBLIC_BUCKET_NAME', None)
+        for bucket_name in (private_bucket, public_bucket):
+            if bucket_name:
+                if path.startswith(f"/{bucket_name}/"):
+                    path = path[len(f"/{bucket_name}/"):]
+                    break
+                elif path.startswith(f"{bucket_name}/"):
+                    path = path[len(f"{bucket_name}/"):]
+                    break
+                elif bucket_name in path:
+                    path = path.split(bucket_name)[-1]
+                    break
+
+        if path.startswith('/'):
+            path = path[1:]
+
         if permission == 'r':
             client_method = 'GET'
         elif permission == 'w':
@@ -90,6 +135,18 @@ def make_url_sassy(path, permission='r', duration=60 * 60 * 24 * 5, content_type
             content_type=content_type,
         )
     elif settings.STORAGE_IS_AZURE:
+        container = getattr(BundleStorage, 'azure_container', None) or getattr(settings, 'BUNDLE_AZURE_CONTAINER', None) or getattr(settings, 'AZURE_CONTAINER', None)
+        if container:
+            if path.startswith(f"/{container}/"):
+                path = path[len(f"/{container}/"):]
+            elif path.startswith(f"{container}/"):
+                path = path[len(f"{container}/"):]
+            elif container in path:
+                path = path.split(container)[-1]
+
+        if path.startswith('/'):
+            path = path[1:]
+
         if permission == 'r':
             client_method = BlobSasPermissions(read=True)
         elif permission == 'w':
