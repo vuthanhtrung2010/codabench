@@ -8,11 +8,16 @@ if settings.STORAGE_IS_S3:
 
         class PublicStorageClass(S3Boto3Storage):
             bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
+            signature_version = getattr(settings, "AWS_S3_SIGNATURE_VERSION", "s3v4")
+            region_name = getattr(settings, "AWS_S3_REGION_NAME", "auto")
 
         class PrivateStorageClass(S3Boto3Storage):
             bucket_name = getattr(settings, "AWS_STORAGE_PRIVATE_BUCKET_NAME", None)
+            signature_version = getattr(settings, "AWS_S3_SIGNATURE_VERSION", "s3v4")
+            region_name = getattr(settings, "AWS_S3_REGION_NAME", "auto")
     except ImportError:
         raise RuntimeError("S3 backend requested but 'boto3' or 's3boto3' storage is not installed")
+
 
 elif settings.STORAGE_IS_GCS:
     try:
@@ -73,14 +78,20 @@ except Exception as e:
     raise RuntimeError(f"Failed to load default storage from Django STORAGES: {e}")
 
 try:
-    BundleStorage = PrivateStorageClass()
+    BundleStorage = storages["bundle"]
 except Exception:
-    BundleStorage = DefaultStorage
+    try:
+        BundleStorage = PrivateStorageClass()
+    except Exception:
+        BundleStorage = DefaultStorage
 
 try:
-    PublicStorage = PublicStorageClass()
+    PublicStorage = storages["default"]
 except Exception:
-    PublicStorage = DefaultStorage
+    try:
+        PublicStorage = PublicStorageClass()
+    except Exception:
+        PublicStorage = DefaultStorage
 
 
 def md5(filename):

@@ -39,6 +39,7 @@ SITE_ID = 1
 
 
 THIRD_PARTY_APPS = (
+    'commands',  # Must come before django.contrib.auth to override createsuperuser
     'django_su',  # Must come before django.contrib.admin
     'ajax_select',  # For django_su
 
@@ -72,7 +73,6 @@ OUR_APPS = (
     'pages',
     'leaderboards',
     'tasks',
-    'commands',
     'queues',
     'health',
     'forums',
@@ -410,37 +410,49 @@ STORAGE_IS_S3 = STORAGE_TYPE == 's3' or STORAGE_TYPE == 'minio'
 STORAGE_IS_GCS = STORAGE_TYPE == 'gcs'
 STORAGE_IS_AZURE = STORAGE_TYPE == 'azure'
 
-# Django 4.x STORAGES configuration
+# S3 / Object Storage (AWS S3, Cloudflare R2, MinIO)
+AWS_S3_SIGNATURE_VERSION = os.environ.get('AWS_S3_SIGNATURE_VERSION', 's3v4')
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', os.environ.get('AWS_REGION', 'auto'))
+AWS_S3_ADDRESSING_STYLE = os.environ.get('AWS_S3_ADDRESSING_STYLE', None)
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get('AWS_STORAGE_PRIVATE_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL') or None
+AWS_DEFAULT_ACL = None  # Uses bucket's security access policies
+_raw_querystring_auth = os.environ.get('AWS_QUERYSTRING_AUTH', 'true')
+AWS_QUERYSTRING_AUTH = _raw_querystring_auth.lower() == 'true' if isinstance(_raw_querystring_auth, str) else bool(_raw_querystring_auth)
+S3_USE_SIGV4 = True
+
 # Django 4.x STORAGES configuration
 if STORAGE_IS_S3:
+    _s3_common_options = {
+        "access_key": AWS_ACCESS_KEY_ID,
+        "secret_key": AWS_SECRET_ACCESS_KEY,
+        "endpoint_url": AWS_S3_ENDPOINT_URL,
+        "use_ssl": True,
+        "signature_version": AWS_S3_SIGNATURE_VERSION,
+        "region_name": AWS_S3_REGION_NAME,
+        "querystring_auth": AWS_QUERYSTRING_AUTH,
+        "default_acl": AWS_DEFAULT_ACL,
+    }
+    if AWS_S3_ADDRESSING_STYLE:
+        _s3_common_options["addressing_style"] = AWS_S3_ADDRESSING_STYLE
+
+    _s3_bundle_options = dict(_s3_common_options)
+    _s3_bundle_options["bucket_name"] = AWS_STORAGE_PRIVATE_BUCKET_NAME
+
+    _s3_default_options = dict(_s3_common_options)
+    _s3_default_options["bucket_name"] = AWS_STORAGE_BUCKET_NAME
+
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                "bucket_name": os.environ.get('AWS_STORAGE_BUCKET_NAME'),
-                "access_key": os.environ.get('AWS_ACCESS_KEY_ID'),
-                "secret_key": os.environ.get('AWS_SECRET_ACCESS_KEY'),
-                "endpoint_url": os.environ.get('AWS_S3_ENDPOINT_URL'),
-                "use_ssl": True,
-                "signature_version": "s3v4",
-                "region_name": "auto",
-                "querystring_auth": os.environ.get('AWS_QUERYSTRING_AUTH', "true").lower() == "true",
-                "default_acl": None,
-            },
+            "OPTIONS": _s3_default_options,
         },
         "bundle": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                "bucket_name": os.environ.get("AWS_STORAGE_PRIVATE_BUCKET_NAME"),
-                "access_key": os.environ.get("AWS_ACCESS_KEY_ID"),
-                "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
-                "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL"),
-                "use_ssl": True,
-                "signature_version": "s3v4",
-                "region_name": "auto",
-                "querystring_auth": os.environ.get("AWS_QUERYSTRING_AUTH", "true").lower() == "true",
-                "default_acl": None,
-            },
+            "OPTIONS": _s3_bundle_options,
         },
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
@@ -507,22 +519,7 @@ STATICFILES_DIRS = (
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 MEDIA_URL = '/media/'
 
-# S3 from AWS
-S3_USE_SIGV4 = os.environ.get("S3_USE_SIGV4", True)
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get('AWS_STORAGE_PRIVATE_BUCKET_NAME')
-AWS_S3_CALLING_FORMAT = os.environ.get('AWS_S3_CALLING_FORMAT', 'boto.s3.connection.OrdinaryCallingFormat')
-AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL', '')
-AWS_DEFAULT_ACL = None  # Uses buckets security access policies
-AWS_QUERYSTRING_AUTH = os.environ.get(
-    # This stops signature/auths from appearing in saved URLs
-    'AWS_QUERYSTRING_AUTH',
-    False
-)
-if isinstance(AWS_QUERYSTRING_AUTH, str) and 'false' in AWS_QUERYSTRING_AUTH.lower():
-    AWS_QUERYSTRING_AUTH = False  # Was set to string, convert to bool
+# S3 settings are configured above in the storage section
 
 # Azure
 AZURE_ACCOUNT_NAME = os.environ.get('AZURE_ACCOUNT_NAME')
@@ -598,7 +595,23 @@ RERUN_SUBMISSION_LIMIT = os.environ.get('RERUN_SUBMISSION_LIMIT', 30)
 
 
 # =============================================================================
-# Enable or disbale regular email sign-in an sign-up
+# Enable or disable regular email/password sign-in and sign-up
+# By default, disabled in favor of OIDC (Authentik)
 # =============================================================================
-ENABLE_SIGN_UP = os.environ.get('ENABLE_SIGN_UP', 'True').lower() == 'true'
-ENABLE_SIGN_IN = os.environ.get('ENABLE_SIGN_IN', 'True').lower() == 'true'
+ENABLE_SIGN_UP = os.environ.get('ENABLE_SIGN_UP', 'False').lower() == 'true'
+ENABLE_SIGN_IN = os.environ.get('ENABLE_SIGN_IN', 'False').lower() == 'true'
+
+# =============================================================================
+# OIDC / Authentik Configuration
+# =============================================================================
+OIDC_ENABLED = os.environ.get('OIDC_ENABLED', 'True').lower() == 'true'
+OIDC_ORGANIZATION_NAME = os.environ.get('OIDC_ORGANIZATION_NAME', 'Authentik')
+OIDC_CLIENT_ID = os.environ.get('OIDC_CLIENT_ID', '')
+OIDC_CLIENT_SECRET = os.environ.get('OIDC_CLIENT_SECRET', '')
+OIDC_AUTHORIZATION_URL = os.environ.get('OIDC_AUTHORIZATION_URL', '')
+OIDC_TOKEN_URL = os.environ.get('OIDC_TOKEN_URL', '')
+OIDC_USER_INFO_URL = os.environ.get('OIDC_USER_INFO_URL', '')
+OIDC_REDIRECT_URL = os.environ.get('OIDC_REDIRECT_URL', '')
+OIDC_BUTTON_BG_COLOR = os.environ.get('OIDC_BUTTON_BG_COLOR', '#2C3E4C')
+OIDC_BUTTON_TEXT_COLOR = os.environ.get('OIDC_BUTTON_TEXT_COLOR', '#FFFFFF')
+

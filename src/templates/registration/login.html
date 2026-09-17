@@ -70,13 +70,15 @@
 
     <!-- Auth Organization Buttons -->
     {% if auth_organizations %}
-    <div class="sixteen wide mobile six wide computer centered column">
-        <h3 class="ui centered header">Organization Login</h3>
-        <form method="POST" action="{% url 'oidc_configurations:organization_oidc_login' %}">
+    <div class="ui stacked segment">
+        <h3 class="ui blue centered header">Organization Login (SSO)</h3>
+        <form class="ui form" method="POST" action="{% url 'oidc_configurations:organization_oidc_login' %}">
             {% csrf_token %}
-            <div>
-                <input type="checkbox" name="checkbox" id="id_checkbox" required>
-                <label for="id_checkbox">I accept the <a href="https://github.com/codalab/codabench/blob/master/documentation/PRIVACY.md" target="_blank">terms and conditions</a>.</label>
+            <div class="field" style="margin-bottom: 15px;">
+                <div class="ui checkbox">
+                    <input type="checkbox" name="checkbox" id="id_checkbox" required>
+                    <label for="id_checkbox">I accept the <a href="https://github.com/codalab/codabench/blob/master/documentation/PRIVACY.md" target="_blank">terms and conditions</a>.</label>
+                </div>
             </div>
             {% for organization in auth_organizations %}
             <button class="ui fluid primary submit button"
@@ -85,12 +87,16 @@
                     value="{{ organization.id }}"
                     style="background-color: {{ organization.button_bg_color }};
                            color: {{ organization.button_text_color }};
-                           margin-bottom:5px;">
-                Login with {{ organization.name }}
+                           margin-bottom: 8px;">
+                <i class="shield alternate icon"></i> Login with {{ organization.name }}
             </button>
             {% endfor %}
         </form>
-        
+    </div>
+    {% elif not ENABLE_SIGN_IN %}
+    <div class="ui warning message">
+        <div class="header">SSO Configuration Required</div>
+        <p>Password login is disabled and no OIDC identity provider is configured yet. Please configure the OIDC environment variables or configure an organization in the admin panel.</p>
     </div>
     {% endif %}
 </div>

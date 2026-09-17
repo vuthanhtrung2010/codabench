@@ -211,6 +211,7 @@ def sign_up(request):
     # If sign up is not enabled then redirect to login
     # this is for security as some users may access sign up page using the url
     if not settings.ENABLE_SIGN_UP:
+        messages.info(request, "Traditional signup is disabled. Please log in using your organization account.")
         return redirect('accounts:login')
 
     context = {}
@@ -278,6 +279,10 @@ def log_in(request):
 
     context = {}
     if request.method == 'POST':
+        if not settings.ENABLE_SIGN_IN:
+            messages.error(request, "Traditional password login is disabled. Please log in using your organization account.")
+            return redirect('accounts:login')
+
         form = LoginForm(request.POST)
 
         if form.is_valid():
@@ -310,6 +315,12 @@ def log_in(request):
                     messages.error(request, "Invalid login/password")
         else:
             context['form'] = form
+
+    try:
+        from oidc_configurations.utils import ensure_env_oidc_organization
+        ensure_env_oidc_organization()
+    except Exception:
+        pass
 
     # Fetch auth_organizations from the database
     auth_organizations = Auth_Organization.objects.all()

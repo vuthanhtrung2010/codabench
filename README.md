@@ -4,33 +4,39 @@
 
 Codabench is an open-source web-based platform that enables researchers, developers, and data scientists to collaborate, with the goal of advancing research fields where machine learning and advanced computation is used. Codabench helps to solve many common problems in the arena of data-oriented research through its online community where people can share worksheets and participate in competitions and benchmarks. It can be seen as a version 2 of [CodaLab Competitions](https://github.com/codalab/codalab-competitions).
 
-To see Codabench in action, visit [codabench.org](https://www.codabench.org/).
+> **Note: Enhanced Version**
+>
+> This branch is an enhanced edition of Codabench featuring:
+>
+> - **OIDC / Authentik Single Sign-On**: Traditional username/password signup and login are disabled by default (`ENABLE_SIGN_IN=False`, `ENABLE_SIGN_UP=False`). Users authenticate through OIDC providers such as Authentik.
+> - **Modern S3 & Cloudflare R2 Support**: Native support for SigV4 presigned URLs and modern S3-compatible object storage engines (Cloudflare R2, AWS S3, MinIO) without SigV2 fallback.
+> - **Passwordless Superuser Management**: `createsuperuser` creates superusers without a password for OIDC environments, alongside `grant_superuser` and `demote_superuser` commands and scripts (`bin/grant_superuser.sh`, `bin/demote_superuser.sh`).
+> - **Fast Development Mode**: Detailed instructions in [DEVELOPMENT.md](DEVELOPMENT.md) for running Django and Celery workers directly on host without Docker or with a hybrid setup.
 
+To see Codabench in action, visit [codabench.org](https://www.codabench.org/).
 
 ## Documentation
 
+- [Development Guide (Host / Hybrid / Docker)](DEVELOPMENT.md)
 - [Codabench Docs](https://docs.codabench.org)
-
 
 ## Quick installation (for Linux)
 
-_To participate, or even organize your own benchmarks or competitions, **you don't need to install anything**, you just need to sign in an instance of the platform (e.g. [this one](https://www.codabench.org/)). 
+_To participate, or even organize your own benchmarks or competitions, **you don't need to install anything**, you just need to sign in an instance of the platform (e.g. [this one](https://www.codabench.org/)).
 If you wish to configure your own instance of Codabench platform, here are the instructions:_
 
-
 ```
-$ cp .env_sample .env
-$ cp my-postgres_sample.conf my-postgres.conf
-$ docker compose up -d
-$ docker compose exec django ./manage.py migrate
-$ docker compose exec django ./manage.py generate_data
-$ docker compose exec django ./manage.py collectstatic --noinput
+cp .env_sample .env
+cp my-postgres_sample.conf my-postgres.conf
+docker compose up -d
+docker compose exec django ./manage.py migrate
+docker compose exec django ./manage.py generate_data
+docker compose exec django ./manage.py collectstatic --noinput
 ```
 
-You can now login as username "admin" with password "admin" at http://localhost/
+You can now login as username "admin" with password "admin" at <http://localhost/>
 
 For more information about installation, checkout [Codabench Basic Installation Guide](https://docs.codabench.org/latest/Developers_and_Administrators/Codabench-Installation/) and [How to Deploy Server](https://docs.codabench.org/latest/Developers_and_Administrators/How-to-deploy-Codabench-on-your-server/).
-
 
 ## License
 
@@ -38,8 +44,7 @@ Copyright (c) 2020-2022, Université Paris-Saclay.
 This software is released under the Apache License 2.0 (the "License"); you may not use the software except in compliance with the License.
 
 The text of the Apache License 2.0 can be found online at:
-http://www.opensource.org/licenses/apache2.0.php
-
+<http://www.opensource.org/licenses/apache2.0.php>
 
 ## Cite Codabench in your research
 
