@@ -219,7 +219,32 @@
             $('.tabular.menu.details-menu .item', self.root).tab({
                 history: true,
                 historyType: 'hash',
+                onVisible: function (tabPath) {
+                    if (tabPath === 'results-tab') {
+                        CODALAB.events.trigger('results_tab_visible')
+                    } else {
+                        CODALAB.events.trigger('results_tab_hidden')
+                    }
+                }
             })
+
+            self.check_tab_visibility = function () {
+                var hash = (window.location.hash || '').replace('#', '')
+                if (hash === 'results-tab' || $('.details-menu .item[data-tab="results-tab"]', self.root).hasClass('active')) {
+                    CODALAB.events.trigger('results_tab_visible')
+                } else if (hash) {
+                    CODALAB.events.trigger('results_tab_hidden')
+                }
+            }
+
+            $(window).on('hashchange', self.check_tab_visibility)
+            self.check_tab_visibility()
+        })
+
+        self.on('unmount', function () {
+            if (self.check_tab_visibility) {
+                $(window).off('hashchange', self.check_tab_visibility)
+            }
         })
 
         CODALAB.events.on('competition_loaded', function (competition) {

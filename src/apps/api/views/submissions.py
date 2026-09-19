@@ -20,6 +20,7 @@ from api.pagination import DynamicChoicePagination
 from tasks.models import Task
 from api.serializers.submissions import SubmissionCreationSerializer, SubmissionSerializer, SubmissionFilesSerializer, SubmissionDetailSerializer
 from competitions.models import Submission, SubmissionDetails, Phase, CompetitionParticipant
+from competitions.leaderboard_utils import send_leaderboard_update
 from leaderboards.strategies import put_on_leaderboard_by_submission_rule
 from leaderboards.models import SubmissionScore, Column, Leaderboard
 import logging
@@ -247,6 +248,8 @@ class SubmissionViewSet(ModelViewSet):
 
         # soft delete submission and return success response
         submission.soft_delete()
+        if submission.phase_id and getattr(submission, "phase", None):
+            send_leaderboard_update(submission.phase.competition_id, submission.phase_id)
         return Response({'message': 'Submission deleted successfully'}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=('DELETE',))
@@ -320,6 +323,7 @@ class SubmissionViewSet(ModelViewSet):
             submission.save()
             Submission.objects.filter(parent=submission).update(leaderboard=None)
 
+        send_leaderboard_update(phase.competition_id, phase.id)
         return Response({})
 
     @action(detail=True, methods=('GET',))
@@ -593,6 +597,7 @@ def upload_submission_scores(request, submission_pk):
             submission.calculate_scores()
 
     put_on_leaderboard_by_submission_rule(request, submission_pk, submission_rule)
+    send_leaderboard_update(submission.phase.competition_id, submission.phase_id)
     return Response()
 
 

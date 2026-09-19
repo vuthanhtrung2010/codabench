@@ -4,7 +4,7 @@ import time
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocketConsumer
 # from channels.exceptions import DenyConnection
 from django_redis import get_redis_connection
 from competitions.models import Submission
@@ -150,3 +150,67 @@ class SubmissionOutputConsumer(AsyncWebsocketConsumer):
             logger.debug(f"FRONTEND_MARKER: Successfully sent message to frontend for submission {event['submission_id']}")
         except Exception as e:
             logger.error(f"Failed to send WebSocket message: {e}")
+
+
+class LeaderboardConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        self.competition_id = self.scope['url_route']['kwargs']['competition_id']
+        self.group_name = f"leaderboard_competition_{self.competition_id}"
+
+        has_access = await self._check_access()
+        if not has_access:
+            return await self.close(code=4403)
+
+        if self.channel_layer:
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, "group_name") and self.channel_layer:
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def _check_access(self):
+        from competitions.models import Competition, CompetitionParticipant
+
+        user = self.scope.get("user")
+
+        def _sync_check():
+            try:
+                comp = Competition.objects.get(pk=self.competition_id)
+            except Competition.DoesNotExist:
+                return False
+
+            if comp.published:
+                return True
+
+            if not user or not user.is_authenticated:
+                return False
+
+            if (
+                getattr(user, "is_superuser", False)
+                or getattr(user, "is_staff", False)
+                or comp.created_by_id == getattr(user, "id", None)
+                or comp.collaborators.filter(pk=user.pk).exists()
+            ):
+                return True
+
+            return comp.participants.filter(
+                user=user, status=CompetitionParticipant.APPROVED
+            ).exists()
+
+        return await sync_to_async(_sync_check)()
+
+    async def leaderboard_message(self, event):
+        payload = event.get("text", {})
+        comp_id = payload.get("competition_id")
+        if comp_id is None and hasattr(self, "competition_id"):
+            try:
+                comp_id = int(self.competition_id)
+            except (ValueError, TypeError):
+                comp_id = self.competition_id
+
+        await self.send_json({
+            "type": "leaderboard_update",
+            "competition_id": comp_id,
+            "phase_id": payload.get("phase_id"),
+        })

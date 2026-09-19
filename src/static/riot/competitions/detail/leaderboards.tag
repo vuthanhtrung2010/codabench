@@ -331,7 +331,13 @@
             }
             self.update()
         }
+        self.ws = null
+        self.is_tab_visible = false
+
         self.update_leaderboard = () => {
+            if (!self.phase_id) {
+                return
+            }
             CODALAB.api.get_leaderboard_for_render(self.phase_id, {
                 page: self.page,
                 page_size: self.page_size
@@ -415,6 +421,54 @@
                 self.update()
             })
         }
+
+        self.debounced_update_leaderboard = _.debounce(() => {
+            self.update_leaderboard()
+        }, 250)
+
+        self.setup_websocket = function () {
+            if (!self.competition_id) return
+            if (self.ws && (self.ws.readyState === WebSocket.OPEN || self.ws.readyState === WebSocket.CONNECTING)) {
+                return
+            }
+            var ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+            var ws_url = `${ws_protocol}//${window.location.host}/ws/leaderboard/${self.competition_id}/`
+            var WSClass = window.ReconnectingWebSocket || window.WebSocket
+            if (!WSClass) return
+
+            if (window.ReconnectingWebSocket) {
+                self.ws = new ReconnectingWebSocket(ws_url, null, {
+                    automaticOpen: true,
+                    maxReconnectAttempts: 10,
+                    reconnectInterval: 1500
+                })
+            } else {
+                self.ws = new WebSocket(ws_url)
+            }
+
+            self.ws.addEventListener("message", function (event) {
+                try {
+                    var data = JSON.parse(event.data)
+                    if (data.type === 'leaderboard_update') {
+                        if (!data.phase_id || data.phase_id == self.phase_id) {
+                            self.debounced_update_leaderboard()
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to parse leaderboard websocket event:", err)
+                }
+            })
+        }
+
+        self.close_websocket = function () {
+            if (self.ws) {
+                try {
+                    self.ws.close()
+                } catch (err) {}
+                self.ws = null
+            }
+        }
+
         self.get_detailed_result_submisison_id = function(column, submisison){
             for (index in submisison.detailed_results) {
                 if (column.task_id == submisison.detailed_results[index].task) {
@@ -422,19 +476,45 @@
                 }
             }
         }
+
+        CODALAB.events.on('results_tab_visible', () => {
+            self.is_tab_visible = true
+            if (self.phase_id) {
+                self.update_leaderboard()
+            }
+            self.setup_websocket()
+        })
+
+        CODALAB.events.on('results_tab_hidden', () => {
+            self.is_tab_visible = false
+            self.close_websocket()
+        })
+
         CODALAB.events.on('phase_selected', data => {
             self.phase_id = data.id
             self.page = 1
             self.update_leaderboard()
         })
+
         CODALAB.events.on('competition_loaded', (competition) => {
             self.competition_id = competition.id
             self.participant_status = competition.participant_status
             self.opts.is_admin ? self.show_download = "visible" : self.show_download = "hidden"
             self.enable_detailed_results = competition.enable_detailed_results
             self.show_detailed_results_in_leaderboard = competition.show_detailed_results_in_leaderboard
+            if (self.is_tab_visible) {
+                self.setup_websocket()
+                if (self.phase_id) {
+                    self.update_leaderboard()
+                }
+            }
         })
-        CODALAB.events.on('submission_changed_on_leaderboard', self.update_leaderboard)
+
+        CODALAB.events.on('submission_changed_on_leaderboard', self.debounced_update_leaderboard)
+
+        self.on('unmount', function () {
+            self.close_websocket()
+        })
     </script>
     
     <style type="text/stylus">

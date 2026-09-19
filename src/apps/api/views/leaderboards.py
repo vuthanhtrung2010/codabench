@@ -49,4 +49,8 @@ class SubmissionScoreViewSet(ModelViewSet):
         response = super().update(request, *args, **kwargs)
         for submission in instance.submissions.filter(parent__isnull=True):
             submission.calculate_scores()
+        first_sub = instance.submissions.first()
+        if first_sub and first_sub.phase_id:
+            from competitions.leaderboard_utils import send_leaderboard_update
+            send_leaderboard_update(comp.id, first_sub.phase_id)
         return response
