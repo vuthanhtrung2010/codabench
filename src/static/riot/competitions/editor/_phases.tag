@@ -1050,7 +1050,11 @@
             data.hide_score_output = self.refs.hide_score_output.checked
             data.normalize_leaderboard = $(self.refs.normalize_leaderboard).prop('checked') || self.refs.normalize_leaderboard.checked
             data.show_raw_scores = $(self.refs.show_raw_scores).prop('checked') || self.refs.show_raw_scores.checked
-            data.has_trophy = $(self.refs.has_trophy).prop('checked') || self.refs.has_trophy.checked
+            if ($(self.refs.has_trophy_checkbox).length) {
+                data.has_trophy = $(self.refs.has_trophy_checkbox).checkbox('is checked')
+            } else {
+                data.has_trophy = Boolean($(self.refs.has_trophy).prop('checked') || (self.refs.has_trophy && self.refs.has_trophy.checked))
+            }
             let gold_c = parseInt(self.refs.medal_gold_count.value, 10)
             data.medal_gold_count = isNaN(gold_c) ? 1 : Math.max(0, gold_c)
             let silver_c = parseInt(self.refs.medal_silver_count.value, 10)

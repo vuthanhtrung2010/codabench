@@ -61,7 +61,11 @@
             </tr>
             <tr each="{ submission, index in paginated_submissions}">
                 <td class="collapsing index-column center aligned">
-                    <award-badge if="{ get_award(get_row_number(index)) }" award="{ get_award(get_row_number(index)) }"></award-badge>
+                    <award-badge if="{ get_award(get_row_number(index)) }"
+                                 award="{ get_award(get_row_number(index)) }"
+                                 type="{ (get_award(get_row_number(index)) || {}).type }"
+                                 rank="{ (get_award(get_row_number(index)) || {}).rank }">
+                    </award-badge>
                     <virtual if="{ !get_award(get_row_number(index)) }">{ get_row_number(index) }</virtual>
                 </td>
                 <td class="participant-col">
@@ -112,7 +116,11 @@
         </div>
         <div class="leaderboard-card" each="{ submission, index in paginated_submissions }">
             <div class="card-award-banner">
-                <award-badge if="{ get_award(get_row_number(index)) }" award="{ get_award(get_row_number(index)) }"></award-badge>
+                <award-badge if="{ get_award(get_row_number(index)) }"
+                             award="{ get_award(get_row_number(index)) }"
+                             type="{ (get_award(get_row_number(index)) || {}).type }"
+                             rank="{ (get_award(get_row_number(index)) || {}).rank }">
+                </award-badge>
                 <span if="{ !get_award(get_row_number(index)) }" class="card-plain-rank">{ get_row_number(index) }</span>
             </div>
 
@@ -332,18 +340,30 @@
         }
         self.get_award = function (rank) {
             if (!rank || rank < 1) return null
-            var has_trophy = (typeof self.selected_leaderboard.has_trophy !== 'undefined')
-                ? !!self.selected_leaderboard.has_trophy
+            var raw_has_trophy = (self.selected_leaderboard && typeof self.selected_leaderboard.has_trophy !== 'undefined')
+                ? self.selected_leaderboard.has_trophy
                 : true
-            var gold_count = (typeof self.selected_leaderboard.medal_gold_count !== 'undefined' && self.selected_leaderboard.medal_gold_count !== null)
-                ? Number(self.selected_leaderboard.medal_gold_count)
+            var has_trophy = (raw_has_trophy === false || raw_has_trophy === 'false' || raw_has_trophy === 0 || raw_has_trophy === '0')
+                ? false
+                : true
+
+            var raw_gold = self.selected_leaderboard ? self.selected_leaderboard.medal_gold_count : undefined
+            var gold_count = (typeof raw_gold !== 'undefined' && raw_gold !== null)
+                ? parseInt(raw_gold, 10)
                 : 1
-            var silver_count = (typeof self.selected_leaderboard.medal_silver_count !== 'undefined' && self.selected_leaderboard.medal_silver_count !== null)
-                ? Number(self.selected_leaderboard.medal_silver_count)
+            if (isNaN(gold_count) || gold_count < 0) gold_count = 0
+
+            var raw_silver = self.selected_leaderboard ? self.selected_leaderboard.medal_silver_count : undefined
+            var silver_count = (typeof raw_silver !== 'undefined' && raw_silver !== null)
+                ? parseInt(raw_silver, 10)
                 : 1
-            var bronze_count = (typeof self.selected_leaderboard.medal_bronze_count !== 'undefined' && self.selected_leaderboard.medal_bronze_count !== null)
-                ? Number(self.selected_leaderboard.medal_bronze_count)
+            if (isNaN(silver_count) || silver_count < 0) silver_count = 0
+
+            var raw_bronze = self.selected_leaderboard ? self.selected_leaderboard.medal_bronze_count : undefined
+            var bronze_count = (typeof raw_bronze !== 'undefined' && raw_bronze !== null)
+                ? parseInt(raw_bronze, 10)
                 : 1
+            if (isNaN(bronze_count) || bronze_count < 0) bronze_count = 0
 
             var cur = 1
             if (has_trophy) {

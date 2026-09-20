@@ -54,10 +54,14 @@
         self.update_state = function () {
             var award = self.opts.award || {}
             self.award_type = self.opts.type || award.type || null
-            self.rank_value = self.opts.rank || award.rank || ''
+            self.rank_value = (self.opts.rank !== undefined && self.opts.rank !== null && self.opts.rank !== '')
+                ? self.opts.rank
+                : (award.rank !== undefined && award.rank !== null ? award.rank : '')
         }
 
-        self.on('mount update', function () {
+        self.update_state()
+
+        self.on('before-mount before-update update mount', function () {
             self.update_state()
         })
     </script>
