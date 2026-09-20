@@ -516,6 +516,12 @@ STATICFILES_FINDERS = (
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
+
+WHITENOISE_USE_FINDERS = os.environ.get('WHITENOISE_USE_FINDERS', 'True' if DEBUG else 'False').lower() == 'true'
+WHITENOISE_AUTOREFRESH = os.environ.get('WHITENOISE_AUTOREFRESH', 'True' if DEBUG else 'False').lower() == 'true'
+if DEBUG:
+    WHITENOISE_MAX_AGE = 0
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 MEDIA_URL = '/media/'
 

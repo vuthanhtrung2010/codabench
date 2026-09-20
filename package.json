@@ -15,7 +15,6 @@
         "src/static/stylus"
       ],
       "extensions": "styl",
-      "quiet": true,
       "legacyWatch": true,
       "delay": 100
     },
@@ -24,14 +23,13 @@
         "src/static/riot"
       ],
       "extensions": "tag",
-      "quiet": true,
       "legacyWatch": true,
       "delay": 100
     }
   },
   "scripts": {
-    "build-stylus": "stylus --compress --sourcemap-inline < src/static/stylus/index.styl > src/static/generated/output.css",
-    "build-riot": "riot src/static/riot src/static/generated/riot.js --style stylus",
+    "build-stylus": "mkdir -p src/static/generated && stylus --compress --sourcemap-inline < src/static/stylus/index.styl > src/static/generated/output.css",
+    "build-riot": "mkdir -p src/static/generated && riot src/static/riot src/static/generated/riot.js --style stylus",
     "concat-riot": "find src/static/riot -name '*.tag' -exec cat {} \\; -exec echo '' \\; > src/static/generated/riot.tag"
   },
   "repository": {

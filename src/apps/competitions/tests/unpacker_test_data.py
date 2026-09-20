@@ -1,6 +1,8 @@
 import datetime
+import os
 
 from django.utils import timezone
+
 
 v15_yaml_data = {
     "title": "Sample time series competition",
@@ -216,6 +218,13 @@ PHASES = [
         'hide_output': False,
         'hide_prediction_output': False,
         'hide_score_output': False,
+        'normalize_leaderboard': False,
+        'show_raw_scores': True,
+        'task_min_scores': [],
+        'has_trophy': True,
+        'medal_gold_count': 1,
+        'medal_silver_count': 1,
+        'medal_bronze_count': 1,
     },
     {
         'index': 1,
@@ -236,18 +245,23 @@ PHASES = [
         'hide_output': False,
         'hide_prediction_output': False,
         'hide_score_output': False,
+        'normalize_leaderboard': False,
+        'show_raw_scores': True,
+        'task_min_scores': [],
+        'has_trophy': True,
+        'medal_gold_count': 1,
+        'medal_silver_count': 1,
+        'medal_bronze_count': 1,
     }
 ]
 
 
 def get_phases(version):
-    if version == 1:
-        return PHASES
-    elif version == 2:
-        # Make a copy of the list so we aren't mutating the original phases object. May not be strictly necessary,
-        # but if we ever write a test comparing v1 to v2 or something, this would avoid bugs.
-        v2 = [{k: v for k, v in phase.items()} for phase in PHASES]
-        return v2
+    return [{k: v for k, v in phase.items()} for phase in PHASES]
+
+
+
+FILES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'files')
 
 
 def get_tasks(user_id):
@@ -259,25 +273,25 @@ def get_tasks(user_id):
             'ingestion_only_during_scoring': False,
             'ingestion_program': {
                 'file_name': 'ingestion_program.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/ingestion_program.zip',
+                'file_path': os.path.join(FILES_DIR, 'ingestion_program.zip'),
                 'file_type': 'ingestion_program',
                 'creator': user_id
             },
             'input_data': {
                 'file_name': 'evaluation_data.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/evaluation_data.zip',
+                'file_path': os.path.join(FILES_DIR, 'evaluation_data.zip'),
                 'file_type': 'input_data',
                 'creator': user_id
             },
             'scoring_program': {
                 'file_name': 'scoring_program.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/scoring_program.zip',
+                'file_path': os.path.join(FILES_DIR, 'scoring_program.zip'),
                 'file_type': 'scoring_program',
                 'creator': user_id
             },
             'reference_data': {
                 'file_name': 'evaluation_data.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/evaluation_data.zip',
+                'file_path': os.path.join(FILES_DIR, 'evaluation_data.zip'),
                 'file_type': 'reference_data',
                 'creator': user_id
             }
@@ -289,27 +303,28 @@ def get_tasks(user_id):
             'ingestion_only_during_scoring': False,
             'ingestion_program': {
                 'file_name': 'ingestion_program.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/ingestion_program.zip',
+                'file_path': os.path.join(FILES_DIR, 'ingestion_program.zip'),
                 'file_type': 'ingestion_program',
                 'creator': user_id
             },
             'input_data': {
                 'file_name': 'evaluation_data.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/evaluation_data.zip',
+                'file_path': os.path.join(FILES_DIR, 'evaluation_data.zip'),
                 'file_type': 'input_data',
                 'creator': user_id
             },
             'scoring_program': {
                 'file_name': 'scoring_program.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/scoring_program.zip',
+                'file_path': os.path.join(FILES_DIR, 'scoring_program.zip'),
                 'file_type': 'scoring_program',
                 'creator': user_id
             },
             'reference_data': {
                 'file_name': 'evaluation_data.zip',
-                'file_path': '/app/src/apps/competitions/tests/files/evaluation_data.zip',
+                'file_path': os.path.join(FILES_DIR, 'evaluation_data.zip'),
                 'file_type': 'reference_data',
                 'creator': user_id
             }
         }
     }
+
