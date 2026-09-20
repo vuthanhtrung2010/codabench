@@ -1,13 +1,25 @@
 <leaderboards>
-    <div class="ui left action input" style="margin-top: 32px; width: 33%">
-        <button type="button" class="ui icon button" id="search-leaderboard-button">
-            <i class="search icon"></i>
-        </button>
-        <input ref="leaderboardFilter" type="text" placeholder="Filter Leaderboard by Columns">
+    <div class="leaderboard-controls">
+        <div class="ui left action input search-input">
+            <button type="button" class="ui icon button" id="search-leaderboard-button">
+                <i class="search icon"></i>
+            </button>
+            <input ref="leaderboardFilter" type="text" placeholder="Filter Leaderboard by Columns">
+        </div>
+        <a data-tooltip="Start typing to filter columns under 'Meta-data' or Tasks." data-position="right center">
+            <i class="grey question circle icon"></i>
+        </a>
+        <div class="org-toggle-container">
+            <a data-tooltip="Display organization name beneath each participant." data-position="bottom left">
+                <i class="grey question circle icon"></i>
+            </a>
+            <div class="ui toggle checkbox" ref="show_org_checkbox">
+                <input type="checkbox" ref="show_org_input" onchange="{ toggle_show_org }">
+                <label>Show organization under each participant</label>
+            </div>
+        </div>
     </div>
-    <a data-tooltip="Start typing to filter columns under 'Meta-data' or Tasks." data-position="right center">
-        <i class="grey question circle icon"></i>
-    </a>
+
     <table id="leaderboardTable" class="ui celled selectable sortable table">
         <thead>
         <tr>
@@ -34,10 +46,10 @@
         <tr>
             <th class="center aligned">#</th>
             <th>Participant</th>
-            <th>Date</th>
-            <th>ID</th>
+            <th class="center aligned">Date</th>
+            <th class="center aligned">ID</th>
             <th if="{ has_group_queues }">Groups</th>
-            <th each="{ column in filtered_columns }" colspan="1">{column.title}</th>
+            <th each="{ column in filtered_columns }" colspan="1" class="{ (column.task_id != -1) ? 'center aligned' : '' } { column.is_total ? 'final-score-header' : '' }">{column.title}</th>
         </tr>
         </thead>
         <!--  Always show leaderboard  -->
@@ -49,26 +61,28 @@
             </tr>
             <tr each="{ submission, index in paginated_submissions}">
                 <td class="collapsing index-column center aligned">
-                    <gold-medal if="{get_row_number(index) === 1}"></gold-medal>
-                    <silver-medal if="{get_row_number(index) === 2}"></silver-medal>
-                    <bronze-medal if="{get_row_number(index) === 3}"></bronze-medal>
-                    <fourth-place-medal if="{get_row_number(index) === 4}"></fourth-place-medal>
-                    <fifth-place-medal if="{get_row_number(index) === 5}"></fifth-place-medal>
-                    <virtual if="{get_row_number(index) > 5}">{get_row_number(index)}</virtual>
+                    <award-badge if="{ get_award(get_row_number(index)) }" award="{ get_award(get_row_number(index)) }"></award-badge>
+                    <virtual if="{ !get_award(get_row_number(index)) }">{ get_row_number(index) }</virtual>
                 </td>
-                <td if="{submission.organization === null}"><a href="{submission.slug_url}">{ submission.owner }</a></td>
-                <td if="{submission.organization !== null}"><a href="{submission.organization.url}">{ submission.organization.name }</a></td>
-                <td data-sort="{ sort_date_value(submission.created_when) }"
+                <td class="participant-col">
+                    <a if="{submission.organization === null}" href="{submission.slug_url}">{ submission.owner }</a>
+                    <a if="{submission.organization !== null}" href="{submission.organization.url}">{ submission.organization.name }</a>
+                    <div if="{ show_org_under_participant && get_org_name(submission) }" class="card-org-subtext">
+                        { get_org_name(submission) }
+                    </div>
+                </td>
+                <td class="center aligned" data-sort="{ sort_date_value(submission.created_when) }"
                     data-sort-value="{ sort_date_value(submission.created_when) }">
                     { pretty_date(submission.created_when) }
                 </td>
-                <td>{submission.id}</td>
+                <td class="center aligned">{submission.id}</td>
                 <td if="{ has_group_queues }">
                     <span if="{ submission.queue_name }">{ submission.queue_name }</span>
                     <span if="{ !submission.queue_name }" class="ui grey text">—</span>
                 </td>
 
                 <td each="{ column in filtered_columns }"
+                    class="{ (column.task_id != -1) ? 'center aligned score-cell' : '' } { column.is_total ? 'final-score-cell-col' : '' }"
                     data-sort="{ get_score_sort_value(column, submission) }"
                     data-sort-value="{ get_score_sort_value(column, submission) }">
 
@@ -90,7 +104,76 @@
             </tr>
         </tbody>
     </table>
-    <div class="ui pagination menu" style="display:flex; align-items:center; justify-content:space-between; margin-top: 12px;">
+
+    <!-- Mobile & Tablet Cards View -->
+    <div class="leaderboard-cards" if="{ !_.isEmpty(paginated_submissions) }">
+        <div class="leaderboard-card-header" if="{ selected_leaderboard.title }">
+            <h4>{ selected_leaderboard.title }</h4>
+        </div>
+        <div class="leaderboard-card" each="{ submission, index in paginated_submissions }">
+            <div class="card-award-banner">
+                <award-badge if="{ get_award(get_row_number(index)) }" award="{ get_award(get_row_number(index)) }"></award-badge>
+                <span if="{ !get_award(get_row_number(index)) }" class="card-plain-rank">{ get_row_number(index) }</span>
+            </div>
+
+            <div class="card-row">
+                <span class="card-label">Participant</span>
+                <div class="card-value">
+                    <a if="{submission.organization === null}" href="{submission.slug_url}" class="participant-link">{ submission.owner }</a>
+                    <a if="{submission.organization !== null}" href="{submission.organization.url}" class="participant-link">{ submission.organization.name }</a>
+                    <div if="{ show_org_under_participant && get_org_name(submission) }" class="card-org-subtext">
+                        { get_org_name(submission) }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-row">
+                <span class="card-label">Date</span>
+                <span class="card-value card-date">{ pretty_date(submission.created_when) }</span>
+            </div>
+
+            <div class="card-row" if="{ !has_id_column() }">
+                <span class="card-label">ID</span>
+                <span class="card-value">{ submission.id }</span>
+            </div>
+
+            <div class="card-row" if="{ has_group_queues }">
+                <span class="card-label">Groups</span>
+                <span class="card-value">{ submission.queue_name || '—' }</span>
+            </div>
+
+            <div class="card-row { column.is_total ? 'card-final-score-row' : '' }"
+                 each="{ column in filtered_columns }"
+                 if="{ column.title != 'Detailed Results' }">
+                <span class="card-label { column.is_total ? 'final-score-label' : '' }">{ column.title }</span>
+                <div class="card-value { column.is_total ? 'final-score-value' : '' }">
+                    <span class="{ bold_class(column, submission) }">{ get_score(column, submission) }</span>
+                    <small class="raw-score" if="{ get_raw_score(column, submission) !== '' }">
+                        raw { get_raw_score(column, submission) }
+                    </small>
+                </div>
+            </div>
+
+            <div class="card-row" if="{ enable_detailed_results && show_detailed_results_in_leaderboard }">
+                <span class="card-label">Detailed Results</span>
+                <div class="card-value">
+                    <a each="{ column in filtered_columns }"
+                       if="{ column.title == 'Detailed Results' }"
+                       href="detailed_results/{ get_detailed_result_submisison_id(column, submission) }"
+                       target="_blank"
+                       class="ui mini button basic">
+                        <i class="icon eye"></i> View
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="leaderboard-empty-cards center aligned" if="{ _.isEmpty(paginated_submissions) }">
+        <em>No submissions have been added to this leaderboard yet!</em>
+    </div>
+
+    <div class="ui pagination menu pagination-container" style="display:flex; align-items:center; justify-content:space-between; margin-top: 12px;">
         <div style="display:flex; align-items:center; gap:8px;">
             <button class="ui button" onclick="{ go_to_page.bind(this, page - 1) }" disabled="{ page <= 1 }">
                 <i class="icon chevron left"></i> Previous
@@ -228,20 +311,70 @@
             return (score !== null && typeof score !== 'undefined' && score !== '') ? score : ''
         }
 
+        self.show_org_under_participant = false
+        self.toggle_show_org = function () {
+            self.show_org_under_participant = $(self.refs.show_org_input).prop('checked') || self.refs.show_org_input.checked
+            self.update()
+        }
+        self.get_org_name = function (submission) {
+            if (!submission || !submission.organization) return ''
+            if (typeof submission.organization === 'object') {
+                return submission.organization.name || ''
+            }
+            return String(submission.organization)
+        }
+        self.has_id_column = function () {
+            return _.some(self.filtered_columns, function (c) {
+                var title = (c.title || '').toLowerCase()
+                var key = (c.key || '').toLowerCase()
+                return title === 'id' || key === 'id'
+            })
+        }
+        self.get_award = function (rank) {
+            if (!rank || rank < 1) return null
+            var has_trophy = (typeof self.selected_leaderboard.has_trophy !== 'undefined')
+                ? !!self.selected_leaderboard.has_trophy
+                : true
+            var gold_count = (typeof self.selected_leaderboard.medal_gold_count !== 'undefined' && self.selected_leaderboard.medal_gold_count !== null)
+                ? Number(self.selected_leaderboard.medal_gold_count)
+                : 1
+            var silver_count = (typeof self.selected_leaderboard.medal_silver_count !== 'undefined' && self.selected_leaderboard.medal_silver_count !== null)
+                ? Number(self.selected_leaderboard.medal_silver_count)
+                : 1
+            var bronze_count = (typeof self.selected_leaderboard.medal_bronze_count !== 'undefined' && self.selected_leaderboard.medal_bronze_count !== null)
+                ? Number(self.selected_leaderboard.medal_bronze_count)
+                : 1
+
+            var cur = 1
+            if (has_trophy) {
+                if (rank === 1) {
+                    return { type: 'trophy', rank: 1 }
+                }
+                cur = 2
+            }
+
+            if (gold_count > 0 && rank >= cur && rank < cur + gold_count) {
+                return { type: 'gold', rank: rank }
+            }
+            cur += gold_count
+
+            if (silver_count > 0 && rank >= cur && rank < cur + silver_count) {
+                return { type: 'silver', rank: rank }
+            }
+            cur += silver_count
+
+            if (bronze_count > 0 && rank >= cur && rank < cur + bronze_count) {
+                return { type: 'bronze', rank: rank }
+            }
+
+            return null
+        }
+
         self.bold_class = function(column, submission){
             if (column.is_total === true) {
                 return 'total-score-cell'
             }
-            let return_class = ''
-            if (column.task_id != -1 && column.task_id !== '__total__') {
-                if (submission.scores.length > 1) {
-                    let column_index = _.get(column, 'index')
-                    if (column_index === self.selected_leaderboard.primary_index) {
-                        return_class = 'text-bold'
-                    }
-                }
-            }
-            return return_class
+            return 'text-bold'
         }
         self.get_score = function(column, submission) {
             if (column.is_total) {
@@ -307,6 +440,12 @@
             }
             $('#search-leaderboard-button').click(function() {
                 $(self.refs.leaderboardFilter).focus()
+            })
+            $(self.refs.show_org_checkbox).checkbox({
+                onChange: function () {
+                    self.show_org_under_participant = self.refs.show_org_input.checked
+                    self.update()
+                }
             })
             $('#leaderboardTable').tablesort()
         })
@@ -522,6 +661,21 @@
             display: block
             width: 100%
             height: 100%
+        .leaderboard-controls
+            display flex
+            align-items center
+            flex-wrap wrap
+            gap 12px
+            margin-top 24px
+            margin-bottom 16px
+        .search-input
+            width 33%
+            min-width 240px
+        .org-toggle-container
+            display flex
+            align-items center
+            gap 8px
+            margin-left auto
         .celled.table.selectable
             margin 1em 0
         table tbody .center.aligned td
@@ -542,21 +696,142 @@
             top: 50%
             left: 50%
             transform: translate(-50%, -50%)
+        .score-cell
+            text-align center !important
+            font-weight 600
         .text-bold
-            font-weight: bold
+            font-weight: 600
         .raw-score
             display block
             font-weight normal
             font-size 0.8em
             line-height 1.3
             color rgba(0, 0, 0, 0.45)
+            text-align center !important
             font-variant-numeric tabular-nums
             font-feature-settings 'tnum'
         .total-score-cell
-            font-weight bold
-            font-size 1.1em
+            font-weight bold !important
+            font-size 1.15em !important
             color #2185d0 !important
+            text-align center !important
             font-variant-numeric tabular-nums
             font-feature-settings 'tnum'
+        .final-score-header
+            color #2185d0 !important
+            font-weight bold !important
+            text-align center !important
+        .final-score-cell-col
+            text-align center !important
+        .card-org-subtext
+            font-size 0.85em
+            color rgba(0, 0, 0, 0.55)
+            margin-top 2px
+
+        /* Mobile Card Styling */
+        .leaderboard-cards
+            display none
+            margin-top 16px
+        .leaderboard-empty-cards
+            display none
+            padding 24px
+            text-align center
+            color #888
+            background #fff
+            border 1px solid #e0e0e0
+            border-radius 8px
+            margin-top 16px
+        .leaderboard-card-header
+            text-align center
+            background #f8f9fa
+            border 1px solid #e9ecef
+            border-radius 6px
+            padding 10px
+            margin-bottom 14px
+            h4
+                margin 0
+                color #2b3a4a
+                font-weight 600
+        .leaderboard-card
+            background #fff
+            border 1px solid #e0e0e0
+            border-radius 8px
+            box-shadow 0 2px 4px rgba(0, 0, 0, 0.04)
+            margin-bottom 16px
+            padding 14px 16px
+            position relative
+            transition box-shadow 0.2s ease
+            &:hover
+                box-shadow 0 4px 8px rgba(0, 0, 0, 0.08)
+        .card-award-banner
+            margin-bottom 8px
+            display flex
+            align-items center
+        .card-plain-rank
+            font-size 1.2em
+            font-weight bold
+            color #495057
+            padding-left 4px
+        .card-row
+            display flex
+            justify-content space-between
+            align-items center
+            padding 8px 0
+            border-bottom 1px solid #f1f3f5
+            &:last-child
+                border-bottom none
+        .card-label
+            font-weight 600
+            color #495057
+            font-size 0.95em
+            flex-shrink 0
+            margin-right 12px
+        .card-value
+            text-align right
+            font-size 0.95em
+            color #212529
+            word-break break-word
+            .raw-score
+                text-align right !important
+        .participant-link
+            font-weight 600
+            color #2185d0
+        .card-final-score-row
+            background-color #f7fbff
+            margin 4px -16px -14px -16px
+            padding 12px 16px
+            border-top 1px solid #d4e8fa
+            border-bottom-left-radius 8px
+            border-bottom-right-radius 8px
+        .final-score-label
+            color #1b6ca8
+            font-size 1.05em
+            font-weight 700
+        .final-score-value
+            .total-score-cell
+                font-size 1.25em !important
+                color #2185d0 !important
+
+        @media (max-width: 768px)
+            #leaderboardTable
+                display none !important
+            .leaderboard-cards
+                display block
+            .leaderboard-empty-cards
+                display block
+            .leaderboard-controls
+                flex-direction column
+                align-items stretch
+            .search-input
+                width 100% !important
+            .org-toggle-container
+                margin-left 0
+                width 100%
+            .pagination-container
+                flex-direction column !important
+                gap 12px
+                align-items stretch !important
+                & > div
+                    justify-content center
     </style>
 </leaderboards>

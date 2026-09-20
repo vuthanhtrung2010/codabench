@@ -854,6 +854,10 @@ class PhaseViewSet(ModelViewSet):
             'normalize_leaderboard': phase.normalize_leaderboard,
             'show_raw_scores': phase.show_raw_scores,
             'normalized': phase.normalize_leaderboard,
+            'has_trophy': phase.has_trophy,
+            'medal_gold_count': phase.medal_gold_count,
+            'medal_silver_count': phase.medal_silver_count,
+            'medal_bronze_count': phase.medal_bronze_count,
         }
 
         columns = list(query['columns'])

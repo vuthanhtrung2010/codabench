@@ -203,6 +203,10 @@ class V2Unpacker(BaseUnpacker):
                 'normalize_leaderboard': phase_data.get('normalize_leaderboard', False),
                 'show_raw_scores': phase_data.get('show_raw_scores', True),
                 'task_min_scores': phase_data.get('task_min_scores', []),
+                'has_trophy': phase_data.get('has_trophy', True),
+                'medal_gold_count': phase_data.get('medal_gold_count', 1),
+                'medal_silver_count': phase_data.get('medal_silver_count', 1),
+                'medal_bronze_count': phase_data.get('medal_bronze_count', 1),
             }
             try:
                 new_phase['tasks'] = phase_data['tasks']

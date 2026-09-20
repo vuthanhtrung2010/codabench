@@ -314,6 +314,10 @@ class Phase(models.Model):
     normalize_leaderboard = models.BooleanField(default=False)
     show_raw_scores = models.BooleanField(default=True)
     task_min_scores = models.JSONField(default=list, blank=True)
+    has_trophy = models.BooleanField(default=True)
+    medal_gold_count = models.PositiveIntegerField(default=1)
+    medal_silver_count = models.PositiveIntegerField(default=1)
+    medal_bronze_count = models.PositiveIntegerField(default=1)
 
     has_max_submissions = models.BooleanField(default=True)
     max_submissions_per_day = models.PositiveIntegerField(default=5, null=True, blank=True)

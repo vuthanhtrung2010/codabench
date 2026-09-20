@@ -192,6 +192,10 @@ class PhaseInline(admin.TabularInline):
         "end",
         "normalize_leaderboard",
         "show_raw_scores",
+        "has_trophy",
+        "medal_gold_count",
+        "medal_silver_count",
+        "medal_bronze_count",
     ]
     show_change_link = True
 
@@ -388,8 +392,8 @@ class PageExpansion(admin.ModelAdmin):
 
 class PhaseExpansion(admin.ModelAdmin):
     raw_id_fields = ["competition", "leaderboard", "public_data", "starting_kit"]
-    list_display = ["id", "competition", "name", "normalize_leaderboard", "show_raw_scores"]
-    list_filter = ["normalize_leaderboard", "show_raw_scores", "status"]
+    list_display = ["id", "competition", "name", "normalize_leaderboard", "show_raw_scores", "has_trophy"]
+    list_filter = ["normalize_leaderboard", "show_raw_scores", "has_trophy", "status"]
     search_fields = ["id", "competition__title", "name"]
     ordering = ('-id',)
     fieldsets = [
@@ -416,6 +420,15 @@ class PhaseExpansion(admin.ModelAdmin):
             },
         ),
         (
+            "Leaderboard Awards & Medals",
+            {
+                "fields": [
+                    "has_trophy",
+                    ("medal_gold_count", "medal_silver_count", "medal_bronze_count"),
+                ]
+            },
+        ),
+        (
             "Raw ID Fields",
             {"fields": ["competition", "leaderboard", "public_data", "starting_kit"]},
         ),
@@ -435,6 +448,8 @@ class PhaseExpansion(admin.ModelAdmin):
         ),
     ]
 
+
+PhaseAdmin = PhaseExpansion
 
 admin.site.register(models.Competition, CompetitionExpansion)
 admin.site.register(

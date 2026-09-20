@@ -90,6 +90,10 @@ PHASE_FIELDS = [
     "normalize_leaderboard",
     "show_raw_scores",
     "task_min_scores",
+    "has_trophy",
+    "medal_gold_count",
+    "medal_silver_count",
+    "medal_bronze_count",
 ]
 PHASE_FILES = [
     "input_data",

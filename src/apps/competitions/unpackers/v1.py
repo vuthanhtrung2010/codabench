@@ -94,6 +94,10 @@ class V15Unpacker(BaseUnpacker):
                 'normalize_leaderboard': phase.get('normalize_leaderboard', False),
                 'show_raw_scores': phase.get('show_raw_scores', True),
                 'task_min_scores': phase.get('task_min_scores', []),
+                'has_trophy': phase.get('has_trophy', True),
+                'medal_gold_count': phase.get('medal_gold_count', 1),
+                'medal_silver_count': phase.get('medal_silver_count', 1),
+                'medal_bronze_count': phase.get('medal_bronze_count', 1),
             }
             execution_time_limit = phase.get('execution_time_limit')
             if execution_time_limit:

@@ -210,6 +210,42 @@
                             Please select tasks above to configure their baseline minimum scores.
                         </div>
                     </div>
+
+                    <h4 class="ui header dividing" style="margin-top: 15px;">
+                        <i class="trophy icon"></i>
+                        <div class="content">
+                            Leaderboard Awards & Medals
+                            <div class="sub header">Configure champion trophy and number of gold, silver, and bronze medals</div>
+                        </div>
+                    </h4>
+                    <div class="four fields">
+                        <div class="field" style="display: flex; align-items: flex-end; padding-bottom: 8px;">
+                            <div class="ui checkbox" ref="has_trophy_checkbox">
+                                <input type="checkbox" ref="has_trophy" checked>
+                                <label>Has Trophy (Vô địch)
+                                    <span data-tooltip="Award a trophy cup for 1st place / champion" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Gold Medals
+                                <span data-tooltip="Number of gold medals to award" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                            </label>
+                            <input type="number" min="0" step="1" ref="medal_gold_count" value="1" placeholder="1">
+                        </div>
+                        <div class="field">
+                            <label>Silver Medals
+                                <span data-tooltip="Number of silver medals to award" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                            </label>
+                            <input type="number" min="0" step="1" ref="medal_silver_count" value="1" placeholder="1">
+                        </div>
+                        <div class="field">
+                            <label>Bronze Medals
+                                <span data-tooltip="Number of bronze medals to award" data-inverted="" data-position="bottom center"><i class="help icon circle"></i></span>
+                            </label>
+                            <input type="number" min="0" step="1" ref="medal_bronze_count" value="1" placeholder="1">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="ui accordion" ref="advanced_settings">
@@ -751,6 +787,11 @@
             self.refs.show_raw_scores.checked = false
             self.is_normalize_leaderboard = false
             self.current_task_min_scores_map = {}
+            $(self.refs.has_trophy_checkbox).checkbox('set checked')
+            self.refs.has_trophy.checked = true
+            self.refs.medal_gold_count.value = 1
+            self.refs.medal_silver_count.value = 1
+            self.refs.medal_bronze_count.value = 1
 
             // Clear date and time fields values
             $(self.refs.calendar_start_date).find('input[name="start_date"]').val('')
@@ -812,6 +853,17 @@
             } else {
                 $(self.refs.show_raw_scores_checkbox).checkbox('set unchecked')
             }
+
+            let has_tr = _.get(phase, 'has_trophy', true)
+            self.refs.has_trophy.checked = !!has_tr
+            if (has_tr) {
+                $(self.refs.has_trophy_checkbox).checkbox('set checked')
+            } else {
+                $(self.refs.has_trophy_checkbox).checkbox('set unchecked')
+            }
+            self.refs.medal_gold_count.value = _.get(phase, 'medal_gold_count', 1)
+            self.refs.medal_silver_count.value = _.get(phase, 'medal_silver_count', 1)
+            self.refs.medal_bronze_count.value = _.get(phase, 'medal_bronze_count', 1)
 
             self.current_task_min_scores_map = {}
             let raw_min_scores = _.get(phase, 'task_min_scores', [])
@@ -998,6 +1050,13 @@
             data.hide_score_output = self.refs.hide_score_output.checked
             data.normalize_leaderboard = $(self.refs.normalize_leaderboard).prop('checked') || self.refs.normalize_leaderboard.checked
             data.show_raw_scores = $(self.refs.show_raw_scores).prop('checked') || self.refs.show_raw_scores.checked
+            data.has_trophy = $(self.refs.has_trophy).prop('checked') || self.refs.has_trophy.checked
+            let gold_c = parseInt(self.refs.medal_gold_count.value, 10)
+            data.medal_gold_count = isNaN(gold_c) ? 1 : Math.max(0, gold_c)
+            let silver_c = parseInt(self.refs.medal_silver_count.value, 10)
+            data.medal_silver_count = isNaN(silver_c) ? 1 : Math.max(0, silver_c)
+            let bronze_c = parseInt(self.refs.medal_bronze_count.value, 10)
+            data.medal_bronze_count = isNaN(bronze_c) ? 1 : Math.max(0, bronze_c)
             data.task_min_scores = []
             if (data.normalize_leaderboard) {
                 _.forEach(self.phase_tasks, (task, idx) => {
